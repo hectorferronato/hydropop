@@ -1,0 +1,2 @@
+-- Seed data is intentionally empty for the application foundation.
+-- Database schema and local development fixtures will be added with migrations.

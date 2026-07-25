@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-background: #f7f8fc;
+  --color-brand-primary: #3e29ff;
+  --color-brand-secondary: #0f172a;
+  --font-sans: var(--font-hydropop-sans);
+}
+
+:root {
+  --background: #f7f8fc;
+  --foreground: #0f172a;
+  --font-hydropop-sans:
+    "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--background);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(
+      circle at 15% -10%,
+      rgb(62 41 255 / 12%),
+      transparent 32rem
+    ),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-hydropop-sans);
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgb(62 41 255 / 20%);
+  color: #0f172a;
+}
