@@ -12,5 +12,6 @@ export const config = {
     "/setup/:path*",
     "/calendar/:path*",
     "/device/:path*",
+    "/t/:path*",
   ],
 };

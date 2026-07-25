@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { Brand } from "@/components/brand";
 import { DropIcon, SparkleIcon } from "@/components/icons";
+import { sanitizeLoginDestination } from "@/lib/application/auth/login-destination";
 
 import { LoginForm } from "./login-form";
 
@@ -9,7 +10,17 @@ export const metadata: Metadata = {
   title: "Sign in",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>;
+}) {
+  const parameters = await searchParams;
+  const requestedDestination = Array.isArray(parameters.next)
+    ? parameters.next[0]
+    : parameters.next;
+  const destination = sanitizeLoginDestination(requestedDestination);
+
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-10 sm:px-8">
       <div
@@ -54,7 +65,7 @@ export default function LoginPage() {
               sign-up.
             </p>
           </div>
-          <LoginForm />
+          <LoginForm destination={destination} />
         </section>
       </div>
     </main>

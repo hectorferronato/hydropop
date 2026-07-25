@@ -1,14 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { createLoginPath } from "@/lib/application/auth/login-destination";
+
+import type { Database } from "./database.types";
 import { getPublicSupabaseConfig } from "./public-env";
 
 function redirectWithRefreshedCookies(
   request: NextRequest,
   sessionResponse: NextResponse,
 ): NextResponse {
+  const destination = `${request.nextUrl.pathname}${request.nextUrl.search}`;
   const redirectResponse = NextResponse.redirect(
-    new URL("/auth/login", request.url),
+    new URL(createLoginPath(destination), request.url),
   );
 
   for (const cookie of sessionResponse.cookies.getAll()) {
@@ -23,7 +27,7 @@ export async function updateSession(
 ): Promise<NextResponse> {
   let sessionResponse = NextResponse.next({ request });
   const { publishableKey, url } = getPublicSupabaseConfig();
-  const supabase = createServerClient(url, publishableKey, {
+  const supabase = createServerClient<Database>(url, publishableKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();

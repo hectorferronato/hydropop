@@ -12,6 +12,10 @@ const rlsMigration = readFileSync(
   resolve(migrationsDirectory, "20260725120100_add_hydropop_rls.sql"),
   "utf8",
 );
+const onboardingMigration = readFileSync(
+  resolve(migrationsDirectory, "20260725130000_add_onboarding_function.sql"),
+  "utf8",
+);
 const supabaseConfig = readFileSync(
   resolve(process.cwd(), "supabase", "config.toml"),
   "utf8",
@@ -103,5 +107,13 @@ describe("HydroPOP database migrations", () => {
     expect(supabaseConfig).toMatch(
       /\[db\.seed\][\s\S]*?enabled = false[\s\S]*?sql_paths = \["\.\/seed\.sql"\]/u,
     );
+  });
+
+  it("derives onboarding ownership from the authenticated database user", () => {
+    expect(onboardingMigration).toContain("v_user_id uuid := auth.uid();");
+    expect(onboardingMigration).not.toMatch(/\bp_user_id\b/u);
+    expect(onboardingMigration).toContain("and bottles.user_id = v_user_id");
+    expect(onboardingMigration).toContain("security invoker");
+    expect(onboardingMigration).toContain("set search_path = ''");
   });
 });

@@ -92,6 +92,16 @@ Authentication uses Supabase's SSR package and cookie-backed sessions. The root
 `proxy.ts` refreshes sessions and performs an optimistic redirect for protected
 routes. The private App Router layout independently verifies the JWT, fetches a
 fresh user record, and applies the server-only email allowlist before rendering.
+Login accepts email and password only. Safe internal destinations—including
+public NFC links under `/t/[token]`—are preserved through login and first-time
+setup without allowing external redirects.
+
+The mobile-first setup wizard writes profile preferences, the current
+date-effective hydration goal, and the primary bottle through the
+`save_onboarding` PostgreSQL function. The function is security-invoker,
+derives ownership from `auth.uid()`, and performs the changes atomically under
+RLS. Browser-facing volumes follow the user's preferred unit; persisted volumes
+remain integer milliliters.
 
 ## Deployment
 
@@ -103,9 +113,9 @@ foundation.
 ## Database development
 
 The migrations create `profiles`, `bottles`, `hydration_goals`, `nfc_tags`,
-`devices`, and immutable `hydration_events`. Every user-owned table has RLS
-enabled. Related bottle and device ownership is enforced by both composite
-foreign keys and policy checks.
+`devices`, immutable `hydration_events`, and the transactional onboarding
+function. Every user-owned table has RLS enabled. Related bottle and device
+ownership is enforced by both composite foreign keys and policy checks.
 
 Start Supabase and recreate the local schema without seed data:
 
