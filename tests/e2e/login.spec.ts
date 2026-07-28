@@ -36,3 +36,27 @@ test("protects the settings route and preserves it through login", async ({
   ).toBeVisible();
   await expect(page).toHaveURL(/\/auth\/login\?next=%2Fsettings$/u);
 });
+
+test("returns stable unauthenticated errors from hydration APIs", async ({
+  request,
+}) => {
+  const todayResponse = await request.get("/api/v1/dashboard/today");
+  const calendarResponse = await request.get("/api/v1/calendar?month=2026-07");
+  const eventResponse = await request.post("/api/v1/hydration-events", {
+    data: {
+      bottleId: "4b7640b8-8a58-4f78-ab38-c79a7d2da7d0",
+      eventType: "fill_started",
+      idempotencyKey: "playwright-event-key",
+      occurredAt: new Date().toISOString(),
+      source: "simulator",
+    },
+  });
+
+  expect(todayResponse.status()).toBe(401);
+  expect(calendarResponse.status()).toBe(401);
+  expect(eventResponse.status()).toBe(401);
+  await expect(todayResponse.json()).resolves.toMatchObject({
+    data: null,
+    error: { code: "UNAUTHENTICATED" },
+  });
+});

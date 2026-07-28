@@ -15,17 +15,18 @@ import { createClient } from "./server";
 
 export type AllowedUser = User & { email: string };
 
-export async function requireAllowedUser(
-  destination = "/today",
-): Promise<AllowedUser> {
-  const safeDestination = sanitizeLoginDestination(destination);
+export type AllowedUserResult =
+  | { status: "allowed"; user: AllowedUser }
+  | { status: "forbidden" | "unauthenticated"; user: null };
+
+export async function getAllowedUser(): Promise<AllowedUserResult> {
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } =
     await supabase.auth.getClaims();
   const claims = claimsData?.claims;
 
   if (claimsError || !claims?.sub) {
-    redirect(createLoginPath(safeDestination));
+    return { status: "unauthenticated", user: null };
   }
 
   const {
@@ -37,12 +38,29 @@ export async function requireAllowedUser(
   const email = user?.email;
 
   if (userError || !user || user.id !== claims.sub || !email) {
-    redirect(createLoginPath(safeDestination));
+    return { status: "unauthenticated", user: null };
   }
 
   if (!isEmailAllowed(email, allowedEmails)) {
-    redirect(createUnauthorizedPath(safeDestination));
+    return { status: "forbidden", user: null };
   }
 
-  return { ...user, email };
+  return { status: "allowed", user: { ...user, email } };
+}
+
+export async function requireAllowedUser(
+  destination = "/today",
+): Promise<AllowedUser> {
+  const safeDestination = sanitizeLoginDestination(destination);
+  const result = await getAllowedUser();
+
+  if (result.status === "allowed") {
+    return result.user;
+  }
+
+  if (result.status === "unauthenticated") {
+    redirect(createLoginPath(safeDestination));
+  }
+
+  redirect(createUnauthorizedPath(safeDestination));
 }

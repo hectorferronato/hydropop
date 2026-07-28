@@ -11,9 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "db:start": "supabase start",
-    "db:reset": "supabase db reset --no-seed",
-    "db:lint": "supabase db lint --local --schema public --fail-on warning",
+    "db:lint": "supabase db lint --linked --schema public --fail-on warning",
     "db:types": "supabase gen types --lang typescript --linked --schema public > lib/infrastructure/supabase/database.types.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
