@@ -6,10 +6,10 @@ import {
 } from "@/lib/application/onboarding/onboarding-status";
 import { getDateInTimezone } from "@/lib/domain/hydration/hydration-day";
 
-import type { PendingDatabase } from "./database.pending-types";
+import type { Database } from "./database.types";
 
 export type SetupProfile = Pick<
-  PendingDatabase["public"]["Tables"]["profiles"]["Row"],
+  Database["public"]["Tables"]["profiles"]["Row"],
   | "display_name"
   | "preferred_unit"
   | "target_completion_time"
@@ -18,7 +18,7 @@ export type SetupProfile = Pick<
 >;
 
 export type SetupBottle = Pick<
-  PendingDatabase["public"]["Tables"]["bottles"]["Row"],
+  Database["public"]["Tables"]["bottles"]["Row"],
   | "brand"
   | "capacity_ml"
   | "id"
@@ -29,7 +29,7 @@ export type SetupBottle = Pick<
 >;
 
 export type SetupHydrationGoal = Pick<
-  PendingDatabase["public"]["Tables"]["hydration_goals"]["Row"],
+  Database["public"]["Tables"]["hydration_goals"]["Row"],
   "daily_goal_ml" | "effective_from" | "id" | "target_completion_time"
 >;
 
@@ -77,7 +77,7 @@ function throwSetupReadError(
 }
 
 export function createSupabaseOnboardingDataSource(
-  supabase: SupabaseClient<PendingDatabase>,
+  supabase: SupabaseClient<Database>,
 ): OnboardingSnapshotDataSource {
   return {
     async getActiveGoal(userId, hydrationDay) {
@@ -161,7 +161,7 @@ export async function loadOnboardingSnapshot(
 }
 
 export async function getOnboardingSnapshot(
-  supabase: SupabaseClient<PendingDatabase>,
+  supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<OnboardingSnapshot> {
   return loadOnboardingSnapshot(

@@ -8,7 +8,6 @@ import {
   type HydrationSource,
 } from "@/lib/domain/hydration/event-types";
 
-import type { PendingDatabase } from "./database.pending-types";
 import type { Database, Json } from "./database.types";
 
 type EventRow = Database["public"]["Tables"]["hydration_events"]["Row"];
@@ -23,7 +22,7 @@ export type HydrationProfile = Pick<
 >;
 
 export type HydrationBottle = Pick<
-  PendingDatabase["public"]["Tables"]["bottles"]["Row"],
+  Database["public"]["Tables"]["bottles"]["Row"],
   | "archived_at"
   | "capacity_ml"
   | "id"
@@ -108,7 +107,7 @@ export function toHydrationEvent(row: EventRow): HydrationEvent {
 }
 
 export async function getHydrationSnapshot(
-  supabase: SupabaseClient<PendingDatabase>,
+  supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<HydrationSnapshot> {
   const [profileResult, bottleResult, goalsResult, eventsResult] =

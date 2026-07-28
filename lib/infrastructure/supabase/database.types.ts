@@ -24,6 +24,7 @@ export type Database = {
           is_primary: boolean
           model: string | null
           name: string
+          typical_fill_ml: number | null
           updated_at: string
           user_id: string
         }
@@ -36,6 +37,7 @@ export type Database = {
           is_primary?: boolean
           model?: string | null
           name: string
+          typical_fill_ml?: number | null
           updated_at?: string
           user_id: string
         }
@@ -48,6 +50,7 @@ export type Database = {
           is_primary?: boolean
           model?: string | null
           name?: string
+          typical_fill_ml?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -344,6 +347,7 @@ export type Database = {
           p_bottle_is_primary: boolean
           p_bottle_model: string
           p_bottle_name: string
+          p_bottle_typical_fill_ml?: number
           p_daily_goal_ml: number
           p_display_name: string
           p_preferred_unit: string
