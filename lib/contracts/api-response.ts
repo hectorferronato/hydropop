@@ -10,6 +10,10 @@ export const apiErrorCodes = [
   "INVALID_REVERSAL",
   "NO_ACTIVE_GOAL",
   "NO_PRIMARY_BOTTLE",
+  "NFC_TAG_NOT_FOUND",
+  "NFC_TAG_REVOKED",
+  "NFC_TAG_UNAVAILABLE",
+  "RECENT_COMPLETION",
   "EVENT_TOO_OLD",
   "EVENT_IN_FUTURE",
   "INTERNAL_ERROR",
@@ -40,6 +44,11 @@ export const safeApiErrorMessages: Record<ApiErrorCode, string> = {
   NO_ACTIVE_GOAL: "Set an active hydration goal before logging hydration.",
   NO_PRIMARY_BOTTLE:
     "Choose an active primary bottle before logging hydration.",
+  NFC_TAG_NOT_FOUND: "That NFC tag could not be found.",
+  NFC_TAG_REVOKED: "That NFC tag has been revoked.",
+  NFC_TAG_UNAVAILABLE: "This NFC tag is unavailable.",
+  RECENT_COMPLETION:
+    "You recorded this bottle less than a minute ago. Record another one anyway?",
   UNAUTHENTICATED: "Sign in to continue.",
 };
 
@@ -50,6 +59,16 @@ export class HydrationApplicationError extends Error {
     super(message);
     this.code = code;
     this.name = "HydrationApplicationError";
+  }
+}
+
+export class NfcApplicationError extends Error {
+  readonly code: ApiErrorCode;
+
+  constructor(code: ApiErrorCode, message = safeApiErrorMessages[code]) {
+    super(message);
+    this.code = code;
+    this.name = "NfcApplicationError";
   }
 }
 

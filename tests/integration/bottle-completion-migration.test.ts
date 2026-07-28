@@ -146,9 +146,7 @@ describe("normal bottle completion database and product contract", () => {
     expect(todayPage).not.toContain("bottle-cycle");
   });
 
-  it("documents that future NFC confirmation creates only bottle_completed", () => {
-    expect(readme).toContain(
-      "Future NFC confirmation will create `bottle_completed` only",
-    );
+  it("documents that NFC confirmation creates only bottle_completed", () => {
+    expect(readme).toContain("NFC confirmation → `bottle_completed`");
   });
 });

@@ -131,14 +131,80 @@ The current versioned resources are:
 - `GET /api/v1/calendar?month=YYYY-MM`
 - `GET` and `POST /api/v1/bottles`
 - `GET` and `PUT /api/v1/settings`
+- `GET` and `POST /api/v1/nfc-tags`
+- `PUT /api/v1/nfc-tags/[id]`
+- `POST /api/v1/nfc-tags/[id]/rotate`
+- `POST /api/v1/nfc-tags/[id]/revoke`
+- `POST /api/v1/nfc-tags/complete`
 
 Every API derives identity from the verified Supabase session and returns a
 stable `{ data, error }` envelope. Raw Supabase and PostgreSQL errors are never
 returned to clients.
 
-Future NFC confirmation will create `bottle_completed` only. It must not create
-`fill_started`, `refill`, or `bottle_finished`; NFC implementation is outside
-the current scope.
+## NFC behavior-validation prototype
+
+The Device area provisions and manages NFC tags for validating the future
+HydroPOP Charm gesture. The user finishes their normal bottle amount, scans the
+tag, reviews a mobile confirmation page, and explicitly presses **Record one
+bottle**. Only that authenticated POST creates a `bottle_completed` event with
+source `nfc`. Opening, refreshing, navigating back to, or forwarding to the NFC
+URL never records hydration and never changes tag state.
+
+NFC tokens contain 32 cryptographically random bytes encoded as a 43-character
+base64url string. The URL is a secret locator. HydroPOP validates its format,
+stores only its lowercase SHA-256 digest, and resolves it through an exact
+unique-index lookup scoped to the authenticated owner. The raw token is
+returned only by create and rotate responses and cannot be recovered from the
+database afterward. Authentication, the server email allowlist, RLS, tag
+ownership, bottle ownership, active status, and archival status are still
+checked even when someone possesses the URL.
+
+Tag management supports:
+
+- creation for the authenticated user’s active primary bottle;
+- optional labels and bottle reassignment;
+- rotation, which immediately invalidates the prior URL;
+- revocation without deleting the tag or hydration history;
+- last confirmed-use display through `last_scanned_at`.
+
+For this MVP, `last_scanned_at` means the timestamp of the latest successful
+confirmed NFC bottle completion. A read-only scan does not update it.
+
+The NFC completion adapter accepts only the raw token, occurrence timestamp,
+idempotency key, and an explicit rapid-repeat confirmation flag. It derives the
+user and bottle on the server and calls the same atomic hydration processor used
+by the normal event API. The processor derives and snapshots
+`typical_fill_ml ?? capacity_ml`; the NFC adapter never accepts volume or bottle
+capacity from the browser. Reusing an idempotency key returns the original
+event. A second effective completion for the same bottle within 60 seconds
+shows a warning and requires another deliberate confirmation.
+
+Partial fills are not detected automatically. Correct mistakes with manual
+intake, an adjustment, or a reversal.
+
+### Writing and testing a physical NFC tag
+
+1. Create or rotate a tag under `/device/nfc`.
+2. Copy the complete private NFC URL while it is displayed.
+3. Open an NFC-writing app such as NFC Tools or an equivalent.
+4. Choose to write a URL/URI record.
+5. Paste the HydroPOP URL and write it to the tag.
+6. Scan and test the complete authenticated confirmation flow.
+7. Do not lock the physical tag during early validation.
+
+Local URLs use `NEXT_PUBLIC_SITE_URL=http://localhost:3000`, producing
+`http://localhost:3000/t/{randomToken}`. Production must set
+`NEXT_PUBLIC_SITE_URL` to the canonical HTTPS origin, such as
+`https://app.hydropop.com`, before provisioning production tags.
+
+The future transport mapping is intentionally simple:
+
+- NFC confirmation → `bottle_completed`
+- Future charm short press → `bottle_completed`
+
+The hydration engine and immutable event remain identical; only the client
+transport changes. Browser-based NFC writing, Bluetooth, native mobile code,
+and a simulated electronic charm are not part of this phase.
 
 ## Deployment
 

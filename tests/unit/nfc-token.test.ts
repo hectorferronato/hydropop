@@ -4,7 +4,9 @@ import { isValidPublicNfcToken } from "@/lib/contracts/nfc-token";
 
 describe("public NFC tokens", () => {
   it("accepts appropriately sized URL-safe tokens", () => {
-    expect(isValidPublicNfcToken("Abcdefghijklmnop_1234-token")).toBe(true);
+    expect(
+      isValidPublicNfcToken("Abcdefghijklmnop_1234-token-ABCDE_123456789"),
+    ).toBe(true);
   });
 
   it.each([

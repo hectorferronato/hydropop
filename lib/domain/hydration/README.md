@@ -38,3 +38,9 @@ no prior cycle event, and does not change legacy cycle state. Reversing it
 removes both its effective intake and completed-bottle count. Legacy fill,
 refill, and finish rows remain readable so old and mixed histories continue to
 project deterministically.
+
+NFC does not add a second hydration model. An authenticated NFC confirmation
+adapts a secure tag lookup into the same `bottle_completed` processor call with
+source `nfc`. Future charm short presses will map to the same event. Page loads
+are read-only; only explicit POST actions can append immutable hydration
+events.
