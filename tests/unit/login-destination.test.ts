@@ -10,6 +10,9 @@ describe("sanitizeLoginDestination", () => {
     expect(sanitizeLoginDestination("/calendar?month=2026-07")).toBe(
       "/calendar?month=2026-07",
     );
+    expect(sanitizeLoginDestination("/settings/bottle")).toBe(
+      "/settings/bottle",
+    );
     expect(sanitizeLoginDestination("/t/Abcdefghijklmnop_1234")).toBe(
       "/t/Abcdefghijklmnop_1234",
     );

@@ -20,6 +20,23 @@ const optionalTextSchema = z
   .trim()
   .max(80, "Use 80 characters or fewer.");
 
+const displayNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Enter your display name.")
+  .max(80, "Use 80 characters or fewer.");
+
+const timezoneSchema = z
+  .string()
+  .trim()
+  .refine(isValidIanaTimezone, "Choose a valid IANA timezone.");
+
+const bottleNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Enter a bottle name.")
+  .max(80, "Use 80 characters or fewer.");
+
 const setupFormSchema = z.object({
   bottleBrand: optionalTextSchema,
   bottleCapacity: displayedVolumeSchema,
@@ -28,27 +45,41 @@ const setupFormSchema = z.object({
     .boolean()
     .refine(Boolean, "Choose this as your primary bottle."),
   bottleModel: optionalTextSchema,
-  bottleName: z
-    .string()
-    .trim()
-    .min(1, "Enter a bottle name.")
-    .max(80, "Use 80 characters or fewer."),
+  bottleName: bottleNameSchema,
   dailyGoal: displayedVolumeSchema,
-  displayName: z
-    .string()
-    .trim()
-    .min(1, "Enter your display name.")
-    .max(80, "Use 80 characters or fewer."),
+  displayName: displayNameSchema,
   preferredUnit: z.enum(["ml", "oz"]),
   targetCompletionTime: timeSchema,
-  timezone: z
-    .string()
-    .trim()
-    .refine(isValidIanaTimezone, "Choose a valid IANA timezone."),
+  timezone: timezoneSchema,
   wakeTime: timeSchema,
 });
 
+const profileSettingsSchema = setupFormSchema.pick({
+  displayName: true,
+  preferredUnit: true,
+  targetCompletionTime: true,
+  timezone: true,
+  wakeTime: true,
+});
+
+const hydrationSettingsSchema = setupFormSchema.pick({
+  dailyGoal: true,
+  targetCompletionTime: true,
+});
+
+const bottleSettingsSchema = setupFormSchema.pick({
+  bottleBrand: true,
+  bottleCapacity: true,
+  bottleModel: true,
+  bottleName: true,
+});
+
 export type SetupField = keyof z.input<typeof setupFormSchema>;
+export type ProfileSettingsField = keyof z.input<typeof profileSettingsSchema>;
+export type HydrationSettingsField = keyof z.input<
+  typeof hydrationSettingsSchema
+>;
+export type BottleSettingsField = keyof z.input<typeof bottleSettingsSchema>;
 
 export type SetupInput = {
   bottleBrand: string;
@@ -86,6 +117,125 @@ export type SetupFormResult =
       fieldErrors: Partial<Record<SetupField, string[]>>;
       success: false;
     };
+
+type SettingsFormResult<Data, Field extends string> =
+  | { data: Data; success: true }
+  | {
+      fieldErrors: Partial<Record<Field, string[]>>;
+      success: false;
+    };
+
+export type ProfileSettingsInput = z.output<typeof profileSettingsSchema>;
+
+export type HydrationSettingsInput = {
+  dailyGoalMl: number;
+  targetCompletionTime: string;
+};
+
+export type BottleSettingsInput = {
+  bottleBrand: string;
+  bottleCapacityMl: number;
+  bottleModel: string;
+  bottleName: string;
+};
+
+export function parseProfileSettingsFormData(
+  formData: FormData,
+): SettingsFormResult<ProfileSettingsInput, ProfileSettingsField> {
+  const parsed = profileSettingsSchema.safeParse({
+    displayName: formData.get("displayName"),
+    preferredUnit: formData.get("preferredUnit"),
+    targetCompletionTime: formData.get("targetCompletionTime"),
+    timezone: formData.get("timezone"),
+    wakeTime: formData.get("wakeTime"),
+  });
+
+  return parsed.success
+    ? { data: parsed.data, success: true }
+    : {
+        fieldErrors: parsed.error.flatten().fieldErrors,
+        success: false,
+      };
+}
+
+export function parseHydrationSettingsFormData(
+  formData: FormData,
+  unit: VolumeUnit,
+): SettingsFormResult<HydrationSettingsInput, HydrationSettingsField> {
+  const parsed = hydrationSettingsSchema.safeParse({
+    dailyGoal: formData.get("dailyGoal"),
+    targetCompletionTime: formData.get("targetCompletionTime"),
+  });
+
+  if (!parsed.success) {
+    return {
+      fieldErrors: parsed.error.flatten().fieldErrors,
+      success: false,
+    };
+  }
+
+  const dailyGoalMl = toStoredMilliliters(parsed.data.dailyGoal, unit);
+
+  if (dailyGoalMl > 20_000) {
+    return {
+      fieldErrors: {
+        dailyGoal: ["Daily goal must be 20,000 ml or less."],
+      },
+      success: false,
+    };
+  }
+
+  return {
+    data: {
+      dailyGoalMl,
+      targetCompletionTime: parsed.data.targetCompletionTime,
+    },
+    success: true,
+  };
+}
+
+export function parseBottleSettingsFormData(
+  formData: FormData,
+  unit: VolumeUnit,
+): SettingsFormResult<BottleSettingsInput, BottleSettingsField> {
+  const parsed = bottleSettingsSchema.safeParse({
+    bottleBrand: formData.get("bottleBrand"),
+    bottleCapacity: formData.get("bottleCapacity"),
+    bottleModel: formData.get("bottleModel"),
+    bottleName: formData.get("bottleName"),
+  });
+
+  if (!parsed.success) {
+    return {
+      fieldErrors: parsed.error.flatten().fieldErrors,
+      success: false,
+    };
+  }
+
+  const bottleCapacityMl = toStoredMilliliters(
+    parsed.data.bottleCapacity,
+    unit,
+  );
+
+  if (bottleCapacityMl > 10_000) {
+    return {
+      fieldErrors: {
+        bottleCapacity: ["Bottle capacity must be 10,000 ml or less."],
+      },
+      success: false,
+    };
+  }
+
+  return {
+    data: {
+      bottleBrand: parsed.data.bottleBrand,
+      bottleCapacityMl,
+      bottleModel: parsed.data.bottleModel,
+      bottleName: parsed.data.bottleName,
+    },
+    success: true,
+  };
+}
 
 export function parseSetupFormData(formData: FormData): SetupFormResult {
   const parsed = setupFormSchema.safeParse({

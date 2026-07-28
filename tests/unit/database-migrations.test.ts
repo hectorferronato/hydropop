@@ -16,6 +16,13 @@ const onboardingMigration = readFileSync(
   resolve(migrationsDirectory, "20260725130000_add_onboarding_function.sql"),
   "utf8",
 );
+const optionalBottleMigration = readFileSync(
+  resolve(
+    migrationsDirectory,
+    "20260725140000_make_onboarding_bottle_optional.sql",
+  ),
+  "utf8",
+);
 const supabaseConfig = readFileSync(
   resolve(process.cwd(), "supabase", "config.toml"),
   "utf8",
@@ -115,5 +122,21 @@ describe("HydroPOP database migrations", () => {
     expect(onboardingMigration).toContain("and bottles.user_id = v_user_id");
     expect(onboardingMigration).toContain("security invoker");
     expect(onboardingMigration).toContain("set search_path = ''");
+  });
+
+  it("replaces onboarding with one optional trailing bottle argument", () => {
+    expect(optionalBottleMigration).toMatch(
+      /drop function if exists public\.save_onboarding\(\s*text,\s*text,\s*text,\s*time,\s*time,\s*integer,\s*uuid,\s*text,\s*integer,\s*text,\s*text,\s*boolean\s*\);/u,
+    );
+    expect(optionalBottleMigration).toMatch(
+      /p_bottle_is_primary boolean,\s*p_bottle_id uuid default null\s*\)/u,
+    );
+    expect(optionalBottleMigration).not.toMatch(/\bp_user_id\b/u);
+    expect(optionalBottleMigration).toContain("v_user_id uuid := auth.uid();");
+    expect(optionalBottleMigration).toContain("security invoker");
+    expect(optionalBottleMigration).toContain("set search_path = ''");
+    expect(optionalBottleMigration).toContain(
+      "and bottles.user_id = v_user_id",
+    );
   });
 });

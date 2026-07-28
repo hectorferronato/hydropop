@@ -10,6 +10,8 @@ export const config = {
   matcher: [
     "/today/:path*",
     "/setup/:path*",
+    "/settings",
+    "/settings/:path*",
     "/calendar/:path*",
     "/device/:path*",
     "/t/:path*",

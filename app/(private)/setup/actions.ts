@@ -8,7 +8,7 @@ import { sanitizeLoginDestination } from "@/lib/application/auth/login-destinati
 import { toSaveOnboardingArguments } from "@/lib/application/onboarding/save-onboarding";
 import { parseSetupFormData } from "@/lib/contracts/setup";
 import { requireAllowedUser } from "@/lib/infrastructure/supabase/auth";
-import { createClient } from "@/lib/infrastructure/supabase/server";
+import { createOnboardingRpcClient } from "@/lib/infrastructure/supabase/onboarding-rpc";
 
 import type { SetupState } from "./state";
 
@@ -28,8 +28,9 @@ export async function saveSetup(
   formData: FormData,
 ): Promise<SetupState> {
   const destination = getPostSetupDestination(formData.get("next"));
-  const setupPath =
-    `/setup?${new URLSearchParams({ next: destination })}` as Route;
+  const setupPath = (
+    destination === "/settings" ? "/setup?mode=complete" : "/setup"
+  ) as Route;
   await requireAllowedUser(setupPath);
 
   const parsed = parseSetupFormData(formData);
@@ -42,7 +43,7 @@ export async function saveSetup(
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = await createOnboardingRpcClient();
     const { error } = await supabase.rpc(
       "save_onboarding",
       toSaveOnboardingArguments(parsed.data),
@@ -55,6 +56,8 @@ export async function saveSetup(
     return { message: genericSetupError };
   }
 
-  revalidatePath("/", "layout");
+  revalidatePath("/setup");
+  revalidatePath("/settings");
+  revalidatePath("/today");
   redirect(destination);
 }

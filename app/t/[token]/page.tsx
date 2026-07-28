@@ -31,8 +31,9 @@ export default async function NfcTokenPage({
   const onboarding = await getOnboardingSnapshot(supabase, user.id);
 
   if (!onboarding.isComplete) {
-    const parameters = new URLSearchParams({ next: destination });
-    redirect(`/setup?${parameters.toString()}` as Route);
+    redirect(
+      onboarding.status.hasStartedConfiguration ? "/settings" : "/setup",
+    );
   }
 
   return (

@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const testPort = 3_100;
+const testBaseUrl = `http://localhost:${testPort}`;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -8,7 +11,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: testBaseUrl,
     trace: "on-first-retry",
   },
   projects: [
@@ -22,8 +25,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:3000/auth/login",
-    reuseExistingServer: !process.env.CI,
+    command: `env HYDROPOP_NEXT_DIST_DIR=.next-playwright pnpm dev --port ${testPort}`,
+    url: `${testBaseUrl}/auth/login`,
+    reuseExistingServer: false,
   },
 });

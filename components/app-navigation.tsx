@@ -23,7 +23,7 @@ const navigationItems: readonly NavigationItem[] = [
   { href: "/today", label: "Today", icon: DropIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/device", label: "Device", icon: DeviceIcon },
-  { href: "/setup", label: "Settings", icon: SettingsIcon },
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 function isActivePath(pathname: string, href: Route): boolean {

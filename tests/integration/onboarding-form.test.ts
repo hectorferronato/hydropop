@@ -44,6 +44,42 @@ describe("onboarding form integration", () => {
     expect(Object.keys(arguments_)).not.toContain("user_id");
   });
 
+  it("omits the optional bottle ID for first-time onboarding", () => {
+    const formData = createValidFormData();
+    formData.set("bottleId", "");
+    const parsed = parseSetupFormData(formData);
+
+    expect(parsed.success).toBe(true);
+
+    if (!parsed.success) {
+      throw new Error("Expected first-time setup form to pass validation");
+    }
+
+    const arguments_ = toSaveOnboardingArguments(parsed.data);
+
+    expect(arguments_).not.toHaveProperty("p_bottle_id");
+  });
+
+  it("preserves the existing bottle ID across repeated saves", () => {
+    const firstParse = parseSetupFormData(createValidFormData());
+    const secondParse = parseSetupFormData(createValidFormData());
+
+    expect(firstParse.success).toBe(true);
+    expect(secondParse.success).toBe(true);
+
+    if (!firstParse.success || !secondParse.success) {
+      throw new Error("Expected repeated setup forms to pass validation");
+    }
+
+    const firstArguments = toSaveOnboardingArguments(firstParse.data);
+    const secondArguments = toSaveOnboardingArguments(secondParse.data);
+
+    expect(firstArguments.p_bottle_id).toBe(
+      "3a8d1d53-f6ab-4cc7-86f1-5a78382e3680",
+    );
+    expect(secondArguments.p_bottle_id).toBe(firstArguments.p_bottle_id);
+  });
+
   it("fails closed before persistence when ownership-sensitive input is invalid", () => {
     const formData = createValidFormData();
     formData.set("bottleId", "not-a-uuid");

@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { getSetupFormRevision } from "@/lib/application/onboarding/setup-form-values";
 import type { SetupField, SetupFormValues } from "@/lib/contracts/setup";
 import { convertDisplayVolume, type VolumeUnit } from "@/lib/units/volume";
 
@@ -67,17 +68,21 @@ function parseDisplayedVolume(value: string): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-export function SetupForm({
-  destination,
-  initialValues,
-  timezones,
-}: {
+type SetupFormProps = {
   destination: string;
+  initialStep: 0 | 2 | 3;
   initialValues: SetupFormValues;
   timezones: readonly string[];
-}) {
+};
+
+function SetupFormFields({
+  destination,
+  initialStep,
+  initialValues,
+  timezones,
+}: SetupFormProps) {
   const [state, formAction] = useActionState(saveSetup, initialSetupState);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState<number>(initialStep);
   const [values, setValues] = useState(initialValues);
   const formRef = useRef<HTMLFormElement>(null);
   const firstInvalidField = Object.keys(state.fieldErrors ?? {})[0] as
@@ -519,5 +524,14 @@ export function SetupForm({
         )}
       </div>
     </form>
+  );
+}
+
+export function SetupForm(props: SetupFormProps) {
+  return (
+    <SetupFormFields
+      key={`${getSetupFormRevision(props.initialValues)}:${props.initialStep}`}
+      {...props}
+    />
   );
 }

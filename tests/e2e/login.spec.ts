@@ -25,3 +25,14 @@ test("renders login and explains an unauthorized account", async ({ page }) => {
     page.getByRole("link", { name: "Try another email" }),
   ).toHaveAttribute("href", "/auth/login?next=%2Ft%2FAbcdefghijklmnop_1234");
 });
+
+test("protects the settings route and preserves it through login", async ({
+  page,
+}) => {
+  await page.goto("/settings");
+
+  await expect(
+    page.getByRole("heading", { name: "Sign in to HydroPOP" }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/auth\/login\?next=%2Fsettings$/u);
+});

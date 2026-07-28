@@ -1,5 +1,7 @@
 .next
+.next-playwright
 coverage
+lib/infrastructure/supabase/database.types.ts
 node_modules
 playwright-report
 pnpm-lock.yaml

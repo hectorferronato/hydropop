@@ -1,6 +1,5 @@
 "use server";
 
-import type { Route } from "next";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -48,7 +47,7 @@ export async function login(
     redirect(createUnauthorizedPath(destination));
   }
 
-  let onboardingComplete = false;
+  let onboardingState: "complete" | "new" | "partial" = "new";
   let authenticatedEmailIsAllowed = false;
 
   try {
@@ -71,7 +70,11 @@ export async function login(
       await supabase.auth.signOut();
     } else {
       const onboarding = await getOnboardingSnapshot(supabase, data.user.id);
-      onboardingComplete = onboarding.isComplete;
+      onboardingState = onboarding.isComplete
+        ? "complete"
+        : onboarding.status.hasStartedConfiguration
+          ? "partial"
+          : "new";
     }
   } catch {
     return { message: genericLoginError };
@@ -83,9 +86,12 @@ export async function login(
 
   revalidatePath("/", "layout");
 
-  if (!onboardingComplete && destination !== "/setup") {
-    const parameters = new URLSearchParams({ next: destination });
-    redirect(`/setup?${parameters.toString()}` as Route);
+  if (onboardingState === "partial") {
+    redirect("/settings");
+  }
+
+  if (onboardingState === "new") {
+    redirect("/setup");
   }
 
   redirect(destination);

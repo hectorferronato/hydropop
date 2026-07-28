@@ -1,16 +1,26 @@
 import type { SetupInput } from "@/lib/contracts/setup";
-import type { Database } from "@/lib/infrastructure/supabase/database.types";
 
-export type SaveOnboardingArguments =
-  Database["public"]["Functions"]["save_onboarding"]["Args"];
+export type SaveOnboardingArguments = {
+  p_bottle_brand: string;
+  p_bottle_capacity_ml: number;
+  p_bottle_id?: string;
+  p_bottle_is_primary: boolean;
+  p_bottle_model: string;
+  p_bottle_name: string;
+  p_daily_goal_ml: number;
+  p_display_name: string;
+  p_preferred_unit: "ml" | "oz";
+  p_target_completion_time: string;
+  p_timezone: string;
+  p_wake_time: string;
+};
 
 export function toSaveOnboardingArguments(
   input: SetupInput,
 ): SaveOnboardingArguments {
-  return {
+  const requiredArguments: SaveOnboardingArguments = {
     p_bottle_brand: input.bottleBrand,
     p_bottle_capacity_ml: input.bottleCapacityMl,
-    p_bottle_id: input.bottleId,
     p_bottle_is_primary: input.bottleIsPrimary,
     p_bottle_model: input.bottleModel,
     p_bottle_name: input.bottleName,
@@ -21,4 +31,8 @@ export function toSaveOnboardingArguments(
     p_timezone: input.timezone,
     p_wake_time: input.wakeTime,
   };
+
+  return input.bottleId
+    ? { ...requiredArguments, p_bottle_id: input.bottleId }
+    : requiredArguments;
 }

@@ -2,6 +2,14 @@ export const millilitersPerUsFluidOunce = 29.5735295625;
 
 export type VolumeUnit = "ml" | "oz";
 
+export function isVolumeUnit(value: unknown): value is VolumeUnit {
+  return value === "ml" || value === "oz";
+}
+
+export function parseVolumeUnit(value: unknown): VolumeUnit {
+  return isVolumeUnit(value) ? value : "oz";
+}
+
 export function millilitersToOunces(milliliters: number): number {
   return milliliters / millilitersPerUsFluidOunce;
 }

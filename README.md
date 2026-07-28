@@ -53,21 +53,21 @@ application tables are introduced.
 
 ## Commands
 
-| Command             | Purpose                                  |
-| ------------------- | ---------------------------------------- |
-| `pnpm dev`          | Run the Next.js development server       |
-| `pnpm build`        | Create a production build                |
-| `pnpm start`        | Serve the production build               |
-| `pnpm lint`         | Run ESLint                               |
-| `pnpm typecheck`    | Run strict TypeScript checks             |
-| `pnpm test`         | Run Vitest unit tests                    |
-| `pnpm test:e2e`     | Run Playwright browser tests             |
-| `pnpm db:start`     | Start the local Supabase stack           |
-| `pnpm db:reset`     | Reapply local migrations without seeding |
-| `pnpm db:lint`      | Lint the local public database schema    |
-| `pnpm db:types`     | Regenerate local Supabase database types |
-| `pnpm format`       | Format supported files with Prettier     |
-| `pnpm format:check` | Check formatting without changing files  |
+| Command             | Purpose                                   |
+| ------------------- | ----------------------------------------- |
+| `pnpm dev`          | Run the Next.js development server        |
+| `pnpm build`        | Create a production build                 |
+| `pnpm start`        | Serve the production build                |
+| `pnpm lint`         | Run ESLint                                |
+| `pnpm typecheck`    | Run strict TypeScript checks              |
+| `pnpm test`         | Run Vitest unit tests                     |
+| `pnpm test:e2e`     | Run Playwright browser tests              |
+| `pnpm db:start`     | Start the local Supabase stack            |
+| `pnpm db:reset`     | Reapply local migrations without seeding  |
+| `pnpm db:lint`      | Lint the local public database schema     |
+| `pnpm db:types`     | Regenerate linked Supabase database types |
+| `pnpm format`       | Format supported files with Prettier      |
+| `pnpm format:check` | Check formatting without changing files   |
 
 Install the Playwright browser once before running end-to-end tests:
 
@@ -147,7 +147,8 @@ requested user. It never creates an Auth user or hard-codes a nonexistent UUID.
 It seeds Bea's profile, a 710 ml Owala bottle, a 2130 ml goal, a simulated charm,
 and four weeks of bottle-cycle events including adjustment and reversal examples.
 
-Regenerate TypeScript database types after the local migrations are applied:
+Regenerate TypeScript database types from the linked project after its
+migrations are applied:
 
 ```bash
 pnpm db:types
