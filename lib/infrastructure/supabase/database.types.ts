@@ -325,7 +325,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_nfc_tag: {
+        Args: { p_bottle_id: string; p_label?: string; p_token_hash: string }
+        Returns: {
+          bottle_id: string
+          created_at: string
+          id: string
+          label: string | null
+          last_scanned_at: string | null
+          status: string
+          token_hash: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "nfc_tags"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       is_valid_timezone: { Args: { timezone_name: string }; Returns: boolean }
+      mark_nfc_tag_confirmed: {
+        Args: { p_event_id: string; p_tag_id: string }
+        Returns: string
+      }
       process_hydration_event: {
         Args: {
           p_bottle_id: string
@@ -338,6 +361,44 @@ export type Database = {
           p_volume_ml?: number
         }
         Returns: Json
+      }
+      revoke_nfc_tag: {
+        Args: { p_tag_id: string }
+        Returns: {
+          bottle_id: string
+          created_at: string
+          id: string
+          label: string | null
+          last_scanned_at: string | null
+          status: string
+          token_hash: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "nfc_tags"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rotate_nfc_tag: {
+        Args: { p_tag_id: string; p_token_hash: string }
+        Returns: {
+          bottle_id: string
+          created_at: string
+          id: string
+          label: string | null
+          last_scanned_at: string | null
+          status: string
+          token_hash: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "nfc_tags"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       save_onboarding: {
         Args: {
@@ -356,6 +417,25 @@ export type Database = {
           p_wake_time: string
         }
         Returns: string
+      }
+      update_nfc_tag: {
+        Args: { p_bottle_id: string; p_label: string; p_tag_id: string }
+        Returns: {
+          bottle_id: string
+          created_at: string
+          id: string
+          label: string | null
+          last_scanned_at: string | null
+          status: string
+          token_hash: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "nfc_tags"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
