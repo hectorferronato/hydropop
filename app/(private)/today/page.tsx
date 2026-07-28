@@ -31,6 +31,14 @@ function formatCheckpoint(
   }).format(new Date(checkpointAt));
 }
 
+function formatCompletionTime(occurredAt: string, timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: timezone,
+  }).format(new Date(occurredAt));
+}
+
 export default async function TodayPage() {
   await connection();
 
@@ -52,10 +60,10 @@ export default async function TodayPage() {
             ? `Good to see you, ${dashboard.profile.displayName}.`
             : "Your hydration day"
         }
-        description="Completed bottle cycles and manual entries are projected from your immutable hydration history."
+        description="Finish your normal bottle amount, then press once. Each press is projected from your immutable hydration history."
       />
 
-      {!daySummary.goalMl || !dashboard.activeBottle ? (
+      {!daySummary.goalMl || !dashboard.primaryBottle ? (
         <section
           role="alert"
           className="mt-7 rounded-[1.75rem] border border-amber-200 bg-amber-50 p-5"
@@ -142,19 +150,38 @@ export default async function TodayPage() {
           <div className="mt-5 grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
             <section className="border-brand-secondary/5 rounded-[1.75rem] border bg-white/80 p-5">
               <h2 className="text-brand-secondary text-lg font-bold">
-                Active bottle
+                Last bottle completed
               </h2>
-              <p className="text-brand-secondary/55 mt-2 text-sm">
-                {dashboard.activeBottle.name} ·{" "}
-                {formatVolume(dashboard.activeBottle.capacityMl, unit)}
-              </p>
-              <p className="mt-4 text-sm font-semibold">
-                {dashboard.activeBottle.activeCycle
-                  ? "A filled bottle cycle is active."
-                  : "No filled bottle cycle is active."}
-              </p>
+              {dashboard.lastBottleCompleted ? (
+                <div className="mt-3">
+                  <p className="text-brand-secondary text-sm font-semibold">
+                    {dashboard.lastBottleCompleted.bottleName}
+                  </p>
+                  <p className="text-brand-secondary/55 mt-1 text-sm">
+                    {formatVolume(dashboard.lastBottleCompleted.amountMl, unit)}{" "}
+                    ·{" "}
+                    {formatCompletionTime(
+                      dashboard.lastBottleCompleted.occurredAt,
+                      dashboard.profile.timezone,
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-brand-secondary/50 mt-3 text-sm leading-6">
+                  No bottle has been completed yet today. Finish your normal
+                  bottle amount, then press once.
+                </p>
+              )}
               <dl className="border-brand-secondary/5 mt-5 border-t pt-4 text-sm">
                 <div className="flex justify-between gap-3">
+                  <dt className="text-brand-secondary/45">
+                    Normal fill amount
+                  </dt>
+                  <dd className="text-brand-secondary font-bold">
+                    {formatVolume(dashboard.primaryBottle.normalFillMl, unit)}
+                  </dd>
+                </div>
+                <div className="mt-3 flex justify-between gap-3">
                   <dt className="text-brand-secondary/45">Next checkpoint</dt>
                   <dd className="text-brand-secondary font-bold">
                     {formatCheckpoint(
@@ -193,7 +220,7 @@ export default async function TodayPage() {
 
           {process.env.NODE_ENV === "development" ? (
             <DevelopmentControls
-              bottleId={dashboard.activeBottle.id}
+              bottleId={dashboard.primaryBottle.id}
               latestReversibleEvent={dashboard.latestEffectiveEvent}
               unit={unit}
             />

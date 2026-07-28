@@ -6,10 +6,10 @@ import {
 } from "@/lib/application/onboarding/onboarding-status";
 import { getDateInTimezone } from "@/lib/domain/hydration/hydration-day";
 
-import type { Database } from "./database.types";
+import type { PendingDatabase } from "./database.pending-types";
 
 export type SetupProfile = Pick<
-  Database["public"]["Tables"]["profiles"]["Row"],
+  PendingDatabase["public"]["Tables"]["profiles"]["Row"],
   | "display_name"
   | "preferred_unit"
   | "target_completion_time"
@@ -18,12 +18,18 @@ export type SetupProfile = Pick<
 >;
 
 export type SetupBottle = Pick<
-  Database["public"]["Tables"]["bottles"]["Row"],
-  "brand" | "capacity_ml" | "id" | "is_primary" | "model" | "name"
+  PendingDatabase["public"]["Tables"]["bottles"]["Row"],
+  | "brand"
+  | "capacity_ml"
+  | "id"
+  | "is_primary"
+  | "model"
+  | "name"
+  | "typical_fill_ml"
 >;
 
 export type SetupHydrationGoal = Pick<
-  Database["public"]["Tables"]["hydration_goals"]["Row"],
+  PendingDatabase["public"]["Tables"]["hydration_goals"]["Row"],
   "daily_goal_ml" | "effective_from" | "id" | "target_completion_time"
 >;
 
@@ -71,7 +77,7 @@ function throwSetupReadError(
 }
 
 export function createSupabaseOnboardingDataSource(
-  supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient<PendingDatabase>,
 ): OnboardingSnapshotDataSource {
   return {
     async getActiveGoal(userId, hydrationDay) {
@@ -90,7 +96,9 @@ export function createSupabaseOnboardingDataSource(
     async getPrimaryBottle(userId) {
       return await supabase
         .from("bottles")
-        .select("brand, capacity_ml, id, is_primary, model, name")
+        .select(
+          "brand, capacity_ml, id, is_primary, model, name, typical_fill_ml",
+        )
         .eq("user_id", userId)
         .eq("is_primary", true)
         .is("archived_at", null)
@@ -153,7 +161,7 @@ export async function loadOnboardingSnapshot(
 }
 
 export async function getOnboardingSnapshot(
-  supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient<PendingDatabase>,
   userId: string,
 ): Promise<OnboardingSnapshot> {
   return loadOnboardingSnapshot(

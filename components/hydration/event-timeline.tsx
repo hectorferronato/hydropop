@@ -3,6 +3,7 @@ import { formatDisplayVolume, type VolumeUnit } from "@/lib/units/volume";
 
 const eventLabels = {
   adjustment: "Adjustment",
+  bottle_completed: "Bottle completed",
   bottle_finished: "Bottle finished",
   event_reversed: "Event reversed",
   fill_started: "Bottle filled",

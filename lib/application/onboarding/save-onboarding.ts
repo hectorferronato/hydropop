@@ -7,6 +7,7 @@ export type SaveOnboardingArguments = {
   p_bottle_is_primary: boolean;
   p_bottle_model: string;
   p_bottle_name: string;
+  p_bottle_typical_fill_ml?: number;
   p_daily_goal_ml: number;
   p_display_name: string;
   p_preferred_unit: "ml" | "oz";
@@ -32,7 +33,11 @@ export function toSaveOnboardingArguments(
     p_wake_time: input.wakeTime,
   };
 
-  return input.bottleId
-    ? { ...requiredArguments, p_bottle_id: input.bottleId }
-    : requiredArguments;
+  return {
+    ...requiredArguments,
+    ...(input.bottleId ? { p_bottle_id: input.bottleId } : {}),
+    ...(input.bottleTypicalFillMl === null
+      ? {}
+      : { p_bottle_typical_fill_ml: input.bottleTypicalFillMl }),
+  };
 }

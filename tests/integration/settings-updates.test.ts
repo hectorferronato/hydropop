@@ -33,7 +33,7 @@ const onboardingMigration = readFileSync(
     process.cwd(),
     "supabase",
     "migrations",
-    "20260725140000_make_onboarding_bottle_optional.sql",
+    "20260728131000_add_onboarding_typical_fill.sql",
   ),
   "utf8",
 );
@@ -46,6 +46,7 @@ const currentSnapshot = {
     is_primary: true,
     model: "FreeSip",
     name: "Work bottle",
+    typical_fill_ml: 650,
   },
   goal: {
     daily_goal_ml: 2130,
@@ -105,6 +106,7 @@ describe("settings update integration", () => {
     formData.set("bottleCapacity", "32");
     formData.set("bottleModel", "Wide Mouth");
     formData.set("bottleName", "Gym bottle");
+    formData.set("bottleTypicalFill", "30");
     const parsed = parseBottleSettingsFormData(formData, "oz");
 
     expect(parsed.success).toBe(true);
@@ -121,6 +123,7 @@ describe("settings update integration", () => {
       p_bottle_capacity_ml: 946,
       p_bottle_id: "3a8d1d53-f6ab-4cc7-86f1-5a78382e3680",
       p_bottle_name: "Gym bottle",
+      p_bottle_typical_fill_ml: 887,
     });
   });
 

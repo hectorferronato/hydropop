@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import {
-  hydrationEventTypes,
+  clientHydrationEventTypes,
   hydrationSources,
   type HydrationEvent,
 } from "@/lib/domain/hydration/event-types";
@@ -9,7 +9,7 @@ import {
 const hydrationEventInputBaseSchema = z.object({
   bottleId: z.uuid(),
   deviceId: z.uuid().nullable().optional(),
-  eventType: z.enum(hydrationEventTypes),
+  eventType: z.enum(clientHydrationEventTypes),
   idempotencyKey: z.string().trim().min(8).max(200),
   occurredAt: z.iso.datetime({ offset: true }),
   reversesEventId: z.uuid().nullable().optional(),
@@ -19,6 +19,18 @@ const hydrationEventInputBaseSchema = z.object({
 
 export const hydrationEventInputSchema =
   hydrationEventInputBaseSchema.superRefine((input, context) => {
+    if (
+      input.eventType === "bottle_completed" &&
+      input.volumeMl !== null &&
+      input.volumeMl !== undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Bottle completion uses the bottle’s normal fill amount.",
+        path: ["volumeMl"],
+      });
+    }
+
     if (
       input.eventType === "manual_intake" &&
       (!input.volumeMl || input.volumeMl <= 0)

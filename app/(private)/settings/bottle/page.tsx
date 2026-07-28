@@ -25,7 +25,7 @@ export default async function BottleSettingsPage() {
       <PageHeader
         eyebrow="Settings · Primary bottle"
         title="Edit primary bottle"
-        description="Update the active bottle while preserving its identity and hydration history."
+        description="Update capacity and the optional normal fill amount while preserving this bottle’s identity and hydration history."
       />
       <BottleForm initialValues={toSetupFormValues(snapshot, user.email)} />
     </>

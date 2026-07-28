@@ -47,7 +47,9 @@ export function summarizeHydrationDay({
   const consumedMl = Math.max(0, rawConsumedMl);
   const completedBottleCount = effectiveEvents.filter(
     (event) =>
-      event.eventType === "refill" || event.eventType === "bottle_finished",
+      event.eventType === "bottle_completed" ||
+      event.eventType === "refill" ||
+      event.eventType === "bottle_finished",
   ).length;
   const goalReached = goalMl !== null && consumedMl >= goalMl;
   let runningTotal = 0;

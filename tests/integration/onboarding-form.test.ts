@@ -11,6 +11,7 @@ function createValidFormData(): FormData {
   formData.set("bottleIsPrimary", "on");
   formData.set("bottleModel", "FreeSip");
   formData.set("bottleName", "Work bottle");
+  formData.set("bottleTypicalFill", "20");
   formData.set("dailyGoal", "72");
   formData.set("displayName", "Bea");
   formData.set("preferredUnit", "oz");
@@ -35,6 +36,7 @@ describe("onboarding form integration", () => {
 
     expect(arguments_).toMatchObject({
       p_bottle_capacity_ml: 710,
+      p_bottle_typical_fill_ml: 591,
       p_daily_goal_ml: 2129,
       p_display_name: "Bea",
       p_preferred_unit: "oz",
@@ -78,6 +80,39 @@ describe("onboarding form integration", () => {
       "3a8d1d53-f6ab-4cc7-86f1-5a78382e3680",
     );
     expect(secondArguments.p_bottle_id).toBe(firstArguments.p_bottle_id);
+  });
+
+  it("keeps a blank typical fill null and omits its defaulted RPC argument", () => {
+    const formData = createValidFormData();
+    formData.set("bottleTypicalFill", "");
+    const parsed = parseSetupFormData(formData);
+
+    expect(parsed.success).toBe(true);
+
+    if (!parsed.success) {
+      throw new Error("Expected blank typical fill to pass validation");
+    }
+
+    expect(parsed.data.bottleTypicalFillMl).toBeNull();
+    expect(toSaveOnboardingArguments(parsed.data)).not.toHaveProperty(
+      "p_bottle_typical_fill_ml",
+    );
+  });
+
+  it("rejects a typical fill above physical capacity", () => {
+    const formData = createValidFormData();
+    formData.set("bottleTypicalFill", "25");
+    const parsed = parseSetupFormData(formData);
+
+    expect(parsed.success).toBe(false);
+
+    if (parsed.success) {
+      throw new Error("Expected typical fill above capacity to fail");
+    }
+
+    expect(parsed.fieldErrors.bottleTypicalFill).toContain(
+      "Typical fill amount cannot exceed bottle capacity.",
+    );
   });
 
   it("fails closed before persistence when ownership-sensitive input is invalid", () => {

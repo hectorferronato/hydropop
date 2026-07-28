@@ -16,20 +16,34 @@ const eventRow = {
   bottle_id: bottleId,
   created_at: now.toISOString(),
   device_id: null,
-  event_type: "fill_started",
+  event_type: "bottle_completed",
   id: "bfdb4a6d-f46c-43c0-8ae1-8047e12b2e95",
   idempotency_key: "event-key-0001",
-  metadata: { bottle_capacity_ml: 710 },
+  metadata: {
+    bottle_capacity_ml: 710,
+    effective_credited_ml: 650,
+    typical_fill_ml: 650,
+  },
   occurred_at: now.toISOString(),
   received_at: now.toISOString(),
   reverses_event_id: null,
   source: "web",
   user_id: userId,
-  volume_ml: 0,
+  volume_ml: 650,
 };
 
 function configuredSnapshot(): HydrationSnapshot {
   return {
+    bottles: [
+      {
+        archived_at: null,
+        capacity_ml: 710,
+        id: bottleId,
+        is_primary: true,
+        name: "Daily bottle",
+        typical_fill_ml: 650,
+      },
+    ],
     events: [],
     goals: [
       {
@@ -42,10 +56,12 @@ function configuredSnapshot(): HydrationSnapshot {
       },
     ],
     primaryBottle: {
+      archived_at: null,
       capacity_ml: 710,
       id: bottleId,
       is_primary: true,
       name: "Daily bottle",
+      typical_fill_ml: 650,
     },
     profile: {
       display_name: "Bea",
@@ -60,7 +76,7 @@ function configuredSnapshot(): HydrationSnapshot {
 function validInput() {
   return {
     bottleId,
-    eventType: "fill_started",
+    eventType: "bottle_completed",
     idempotencyKey: eventRow.idempotency_key,
     occurredAt: now.toISOString(),
     source: "web",
@@ -151,8 +167,8 @@ describe("authoritative hydration event application service", () => {
     await expectRpcError("DEVICE_NOT_FOUND");
   });
 
-  it("rejects finishing without an active bottle cycle", async () => {
-    await expectRpcError("NO_ACTIVE_BOTTLE_CYCLE");
+  it("maps an incomplete bottle configuration to a stable error", async () => {
+    await expectRpcError("NO_PRIMARY_BOTTLE");
   });
 
   it("rejects attempting to reverse the same event twice", async () => {
@@ -176,6 +192,39 @@ describe("authoritative hydration event application service", () => {
           eventType: "manual_intake",
           volumeMl: -10,
         },
+        now,
+      }),
+    ).rejects.toBeInstanceOf(HydrationApplicationError);
+    expect(executeAtomicEvent).not.toHaveBeenCalled();
+  });
+
+  it.each(["fill_started", "refill", "bottle_finished"])(
+    "rejects legacy %s as a normal client action",
+    async (eventType) => {
+      const executeAtomicEvent = successfulExecutor();
+
+      await expect(
+        processHydrationEvent({
+          executeAtomicEvent,
+          getUpdatedDashboard: async () =>
+            buildTodayDashboard(configuredSnapshot(), now),
+          input: { ...validInput(), eventType },
+          now,
+        }),
+      ).rejects.toBeInstanceOf(HydrationApplicationError);
+      expect(executeAtomicEvent).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not infer a partial fill from a client-supplied completion volume", async () => {
+    const executeAtomicEvent = successfulExecutor();
+
+    await expect(
+      processHydrationEvent({
+        executeAtomicEvent,
+        getUpdatedDashboard: async () =>
+          buildTodayDashboard(configuredSnapshot(), now),
+        input: { ...validInput(), volumeMl: 200 },
         now,
       }),
     ).rejects.toBeInstanceOf(HydrationApplicationError);

@@ -91,7 +91,7 @@ export default async function SettingsPage({
       <PageHeader
         eyebrow="Settings"
         title="Your HydroPOP setup"
-        description="Review your profile, current hydration plan, and the bottle HydroPOP uses for progress."
+        description="Review your profile, hydration plan, and the normal bottle amount each HydroPOP press records."
       />
 
       {updated ? (
@@ -206,7 +206,7 @@ export default async function SettingsPage({
         <div className="lg:col-span-2">
           <SettingsCard
             title="Primary bottle"
-            description="The active bottle used for capacity-based hydration progress."
+            description="The active bottle and normal amount recorded by one press."
             action={
               summary.bottle && snapshot.isComplete ? (
                 <Link href="/settings/bottle" className={editLinkClassName}>
@@ -232,6 +232,14 @@ export default async function SettingsPage({
                       value={summary.bottle.capacity}
                     />
                     <SummaryRow
+                      label="Typical fill"
+                      value={summary.bottle.typicalFill}
+                    />
+                    <SummaryRow
+                      label="Amount per press"
+                      value={summary.bottle.normalFill}
+                    />
+                    <SummaryRow
                       label="Status"
                       value={
                         summary.bottle.isPrimary
@@ -242,6 +250,11 @@ export default async function SettingsPage({
                   </div>
                 </div>
                 <div className="border-brand-secondary/5 mt-5 border-t pt-5">
+                  <p className="text-brand-secondary/55 max-w-2xl text-xs leading-5">
+                    Press HydroPOP after the final sip. Each press records your
+                    normal fill amount. Partial fills are not detected
+                    automatically and must be corrected in the app.
+                  </p>
                   <p className="text-brand-secondary/45 max-w-2xl text-xs leading-5">
                     Archiving removes this bottle from active use without
                     deleting hydration history. You will need to choose another

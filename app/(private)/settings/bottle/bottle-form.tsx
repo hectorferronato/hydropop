@@ -19,6 +19,7 @@ type BottleValues = Pick<
   | "bottleCapacity"
   | "bottleModel"
   | "bottleName"
+  | "bottleTypicalFill"
   | "preferredUnit"
 >;
 
@@ -78,6 +79,37 @@ export function BottleForm({ initialValues }: { initialValues: BottleValues }) {
           <SettingsFieldError field="bottleCapacity" state={state} />
         </div>
 
+        <div>
+          <label
+            htmlFor="bottleTypicalFill"
+            className="text-brand-secondary/70 text-sm font-semibold"
+          >
+            Typical fill amount{" "}
+            <span className="font-normal opacity-50">optional</span>
+          </label>
+          <div className="relative">
+            <input
+              id="bottleTypicalFill"
+              name="bottleTypicalFill"
+              type="number"
+              inputMode="decimal"
+              min="0.1"
+              step={initialValues.preferredUnit === "oz" ? "0.1" : "1"}
+              defaultValue={initialValues.bottleTypicalFill}
+              placeholder={initialValues.bottleCapacity}
+              className={`${settingsInputClassName} pr-16`}
+            />
+            <span className="text-brand-secondary/40 pointer-events-none absolute top-1/2 right-4 mt-1 -translate-y-1/2 text-sm font-bold">
+              {initialValues.preferredUnit}
+            </span>
+          </div>
+          <p className="text-brand-secondary/40 mt-2 text-xs leading-5">
+            How much water you normally put into the bottle. Leave blank and
+            HydroPOP will use its full capacity.
+          </p>
+          <SettingsFieldError field="bottleTypicalFill" state={state} />
+        </div>
+
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <label
@@ -115,10 +147,12 @@ export function BottleForm({ initialValues }: { initialValues: BottleValues }) {
 
         <div className="border-brand-primary/15 bg-brand-primary/5 rounded-2xl border p-4">
           <p className="text-brand-secondary text-sm font-bold">
-            Active primary bottle
+            Press HydroPOP after the final sip
           </p>
           <p className="text-brand-secondary/45 mt-1 text-xs leading-5">
-            Saving updates this existing bottle; it does not create a duplicate.
+            Each press records your normal fill amount. Partial fills are not
+            detected automatically and must be corrected in the app. Saving
+            updates this bottle without creating a duplicate.
           </p>
         </div>
       </div>

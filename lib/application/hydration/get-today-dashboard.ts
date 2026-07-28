@@ -1,13 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { TodayDashboard } from "@/lib/contracts/dashboard";
-import type { Database } from "@/lib/infrastructure/supabase/database.types";
+import type { PendingDatabase } from "@/lib/infrastructure/supabase/database.pending-types";
 import { getHydrationSnapshot } from "@/lib/infrastructure/supabase/hydration";
 
 import { buildTodayDashboard } from "./hydration-projection";
 
 export async function getTodayDashboard(
-  supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient<PendingDatabase>,
   userId: string,
   now = new Date(),
 ): Promise<TodayDashboard> {

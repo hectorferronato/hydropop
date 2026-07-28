@@ -2,12 +2,23 @@ export const hydrationEventTypes = [
   "fill_started",
   "refill",
   "bottle_finished",
+  "bottle_completed",
   "manual_intake",
   "adjustment",
   "event_reversed",
 ] as const;
 
 export type HydrationEventType = (typeof hydrationEventTypes)[number];
+
+export const clientHydrationEventTypes = [
+  "bottle_completed",
+  "manual_intake",
+  "adjustment",
+  "event_reversed",
+] as const satisfies readonly HydrationEventType[];
+
+export type ClientHydrationEventType =
+  (typeof clientHydrationEventTypes)[number];
 
 export const hydrationSources = [
   "nfc",

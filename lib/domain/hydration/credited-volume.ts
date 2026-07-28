@@ -26,6 +26,7 @@ export function getCreditedVolume(
       return 0;
     case "refill":
     case "bottle_finished":
+    case "bottle_completed":
     case "manual_intake":
       return requirePositiveVolume(event);
     case "adjustment":

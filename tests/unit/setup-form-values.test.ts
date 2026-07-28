@@ -13,6 +13,7 @@ const persistedSnapshot = {
     is_primary: true,
     model: "FreeSip",
     name: "Work bottle",
+    typical_fill_ml: 650,
   },
   goal: {
     daily_goal_ml: 2130,
@@ -50,6 +51,7 @@ describe("setup form values", () => {
       bottleIsPrimary: true,
       bottleModel: "FreeSip",
       bottleName: "Work bottle",
+      bottleTypicalFill: "22",
     });
   });
 
@@ -70,6 +72,7 @@ describe("setup form values", () => {
     );
 
     expect(values.bottleCapacity).toBe("33.8");
+    expect(values.bottleTypicalFill).toBe("22");
     expect(values.dailyGoal).toBe("84.5");
   });
 
@@ -83,7 +86,20 @@ describe("setup form values", () => {
     );
 
     expect(values.bottleCapacity).toBe("710");
+    expect(values.bottleTypicalFill).toBe("650");
     expect(values.dailyGoal).toBe("2130");
+  });
+
+  it("reloads blank typical fill as blank so capacity remains the fallback", () => {
+    const values = toSetupFormValues(
+      {
+        ...persistedSnapshot,
+        bottle: { ...persistedSnapshot.bottle, typical_fill_ml: null },
+      },
+      "beatriz@example.com",
+    );
+
+    expect(values.bottleTypicalFill).toBe("");
   });
 
   it("changes the form revision when refreshed server values change", () => {

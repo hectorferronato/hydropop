@@ -24,6 +24,7 @@ const fieldStep: Record<SetupField, number> = {
   bottleIsPrimary: 3,
   bottleModel: 3,
   bottleName: 3,
+  bottleTypicalFill: 3,
   dailyGoal: 2,
   displayName: 0,
   preferredUnit: 0,
@@ -102,6 +103,7 @@ function SetupFormFields({
 
     const currentGoal = parseDisplayedVolume(values.dailyGoal);
     const currentCapacity = parseDisplayedVolume(values.bottleCapacity);
+    const currentTypicalFill = parseDisplayedVolume(values.bottleTypicalFill);
 
     setValues((current) => ({
       ...current,
@@ -111,6 +113,16 @@ function SetupFormFields({
           : String(
               convertDisplayVolume(
                 currentCapacity,
+                current.preferredUnit,
+                nextUnit,
+              ),
+            ),
+      bottleTypicalFill:
+        currentTypicalFill === null
+          ? current.bottleTypicalFill
+          : String(
+              convertDisplayVolume(
+                currentTypicalFill,
                 current.preferredUnit,
                 nextUnit,
               ),
@@ -161,6 +173,11 @@ function SetupFormFields({
         type="hidden"
         name="bottleCapacity"
         value={values.bottleCapacity}
+      />
+      <input
+        type="hidden"
+        name="bottleTypicalFill"
+        value={values.bottleTypicalFill}
       />
       <input type="hidden" name="bottleBrand" value={values.bottleBrand} />
       <input type="hidden" name="bottleModel" value={values.bottleModel} />
@@ -418,6 +435,39 @@ function SetupFormFields({
               <FieldError field="bottleCapacity" state={state} />
             </div>
 
+            <div>
+              <label
+                htmlFor="bottleTypicalFillInput"
+                className="text-brand-secondary/70 text-sm font-semibold"
+              >
+                Typical fill amount{" "}
+                <span className="font-normal opacity-50">optional</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="bottleTypicalFillInput"
+                  type="number"
+                  inputMode="decimal"
+                  min="0.1"
+                  step={values.preferredUnit === "oz" ? "0.1" : "1"}
+                  value={values.bottleTypicalFill}
+                  onChange={(event) =>
+                    updateValue("bottleTypicalFill", event.target.value)
+                  }
+                  className={`${inputClassName} pr-16`}
+                  placeholder={values.bottleCapacity}
+                />
+                <span className="text-brand-secondary/40 pointer-events-none absolute top-1/2 right-4 mt-1 -translate-y-1/2 text-sm font-bold">
+                  {unitSymbol}
+                </span>
+              </div>
+              <p className="text-brand-secondary/40 mt-2 text-xs leading-5">
+                How much water you normally put into this bottle. Leave blank
+                and HydroPOP will use its full capacity.
+              </p>
+              <FieldError field="bottleTypicalFill" state={state} />
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label
@@ -474,11 +524,17 @@ function SetupFormFields({
                   Make this my primary bottle
                 </span>
                 <span className="text-brand-secondary/45 mt-1 block text-xs leading-5">
-                  Bottle-cycle credits will use this capacity.
+                  Press HydroPOP after the final sip. Each press records your
+                  normal fill amount.
                 </span>
               </span>
             </label>
             <FieldError field="bottleIsPrimary" state={state} />
+            <div className="rounded-2xl bg-amber-50 p-4 text-xs leading-5 text-amber-900/70">
+              HydroPOP assumes each press represents your normal fill amount.
+              Partial fills are not detected automatically and must be corrected
+              in the app.
+            </div>
           </fieldset>
         ) : null}
 

@@ -9,6 +9,7 @@ type SetupSnapshot = {
     is_primary: boolean;
     model: string | null;
     name: string;
+    typical_fill_ml: number | null;
   } | null;
   goal: {
     daily_goal_ml: number;
@@ -46,6 +47,11 @@ export function toSetupFormValues(
     bottleIsPrimary: snapshot.bottle?.is_primary ?? true,
     bottleModel: snapshot.bottle?.model ?? "",
     bottleName: snapshot.bottle?.name ?? "Everyday bottle",
+    bottleTypicalFill:
+      snapshot.bottle?.typical_fill_ml === null ||
+      snapshot.bottle?.typical_fill_ml === undefined
+        ? ""
+        : formatDisplayVolume(snapshot.bottle.typical_fill_ml, unit),
     dailyGoal: formatDisplayVolume(snapshot.goal?.daily_goal_ml ?? 2130, unit),
     displayName:
       snapshot.profile?.display_name?.trim() ||

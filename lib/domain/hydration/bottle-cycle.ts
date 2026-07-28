@@ -42,6 +42,7 @@ export function reconstructBottleCycle(
         startedAt = null;
         break;
       case "adjustment":
+      case "bottle_completed":
       case "event_reversed":
       case "manual_intake":
         break;

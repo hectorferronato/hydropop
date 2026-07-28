@@ -5,7 +5,7 @@ This directory contains framework-free immutable event projection:
 - event and source types
 - authoritative credited-volume rules
 - effective-history and reversal reconstruction
-- bottle-cycle state
+- normal bottle-completion projection plus legacy bottle-cycle compatibility
 - daily summaries and goal-reached time
 - streak calculation
 - IANA-local date and DST-aware schedule utilities
@@ -29,3 +29,12 @@ cycle projections never subtract that value after excluding the original.
 
 The database rejects reversal of an existing reversal, a second reversal of the
 same original, and an original not visible to `auth.uid()`.
+
+## Normal completion gesture
+
+New product activity records `bottle_completed` with the effective normal fill
+already snapshotted into `volume_ml`. It counts as one completed bottle, needs
+no prior cycle event, and does not change legacy cycle state. Reversing it
+removes both its effective intake and completed-bottle count. Legacy fill,
+refill, and finish rows remain readable so old and mixed histories continue to
+project deterministically.

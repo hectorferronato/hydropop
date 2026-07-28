@@ -100,15 +100,19 @@ derives ownership from `auth.uid()`, and performs the changes atomically under
 RLS. Browser-facing volumes follow the user's preferred unit; persisted volumes
 remain integer milliliters.
 
-Hydration tracking uses immutable bottle-cycle events. A first fill opens a
-cycle and credits zero. A refill credits the bottle capacity captured on that
-event, closes the previous cycle, and opens the next one. Finishing a bottle
-credits the captured capacity and leaves no active cycle. Manual entries and
-signed adjustments do not change cycle state.
+The everyday hydration gesture is one HydroPOP press immediately after the
+final sip of a normally filled bottle. A `bottle_completed` event immediately
+credits the bottle’s optional `typical_fill_ml`, falling back to `capacity_ml`
+when no typical fill is configured. That effective amount is copied into the
+immutable event’s `volume_ml` and metadata, so later bottle edits cannot change
+historical totals. Partial fills are not inferred; manual intake, signed
+adjustments, and reversals provide explicit corrections.
 
-For a deterministic first-use experience, a refill requested with no active
-cycle is stored as `fill_started` and credits zero. A finish requested with no
-active cycle is rejected with `NO_ACTIVE_BOTTLE_CYCLE`.
+Legacy `fill_started`, `refill`, and `bottle_finished` rows remain supported by
+the projection layer for historical compatibility, but normal API clients can
+create only `bottle_completed`, `manual_intake`, `adjustment`, and
+`event_reversed`. New completion events have no bottle-cycle state and require
+no preceding fill.
 
 Reversals append an `event_reversed` audit row. The original row is never
 changed or deleted. Effective-history reconstruction excludes the reversed
@@ -131,6 +135,10 @@ The current versioned resources are:
 Every API derives identity from the verified Supabase session and returns a
 stable `{ data, error }` envelope. Raw Supabase and PostgreSQL errors are never
 returned to clients.
+
+Future NFC confirmation will create `bottle_completed` only. It must not create
+`fill_started`, `refill`, or `bottle_finished`; NFC implementation is outside
+the current scope.
 
 ## Deployment
 

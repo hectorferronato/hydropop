@@ -31,6 +31,7 @@ function createPersistedDataSource() {
       is_primary: true,
       model: "FreeSip",
       name: "Work bottle",
+      typical_fill_ml: 650,
     },
     error: null,
   }));
@@ -66,6 +67,7 @@ describe("onboarding snapshot loading", () => {
 
     expect(snapshot.profile?.display_name).toBe("Beatriz");
     expect(snapshot.bottle?.name).toBe("Work bottle");
+    expect(snapshot.bottle?.typical_fill_ml).toBe(650);
     expect(snapshot.goal?.daily_goal_ml).toBe(2130);
     expect(snapshot.isComplete).toBe(true);
   });

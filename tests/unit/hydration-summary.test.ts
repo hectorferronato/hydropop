@@ -33,7 +33,17 @@ function hydrationEvent(
 }
 
 function snapshot(events: HydrationEvent[]): HydrationSnapshot {
+  const bottle = {
+    archived_at: null,
+    capacity_ml: 710,
+    id: "bottle-1",
+    is_primary: true,
+    name: "Daily bottle",
+    typical_fill_ml: 650,
+  } as const;
+
   return {
+    bottles: [bottle],
     events,
     goals: [
       {
@@ -45,12 +55,7 @@ function snapshot(events: HydrationEvent[]): HydrationSnapshot {
         target_completion_time: "20:00:00",
       },
     ],
-    primaryBottle: {
-      capacity_ml: 710,
-      id: "bottle-1",
-      is_primary: true,
-      name: "Daily bottle",
-    },
+    primaryBottle: bottle,
     profile: {
       display_name: "Bea",
       preferred_unit: "oz",
@@ -80,6 +85,30 @@ describe("hydration summaries", () => {
     expect(dashboard.daySummary.consumedMl).toBe(1_420);
     expect(dashboard.daySummary.completedBottleCount).toBe(2);
     expect(dashboard.daySummary.goalPercentage).toBe(100);
+  });
+
+  it("counts new bottle completions in today and calendar projections", () => {
+    const completion = hydrationEvent(
+      "completion",
+      "bottle_completed",
+      "2026-07-28T15:00:00.000Z",
+      650,
+    );
+    const dashboard = buildTodayDashboard(
+      snapshot([completion]),
+      new Date("2026-07-28T16:00:00.000Z"),
+    );
+    const calendar = buildCalendarSummary(snapshot([completion]), "2026-07");
+    const day = calendar.days.find((item) => item.date === "2026-07-28");
+
+    expect(dashboard.daySummary.completedBottleCount).toBe(1);
+    expect(dashboard.lastBottleCompleted).toEqual({
+      amountMl: 650,
+      bottleName: "Daily bottle",
+      occurredAt: "2026-07-28T15:00:00.000Z",
+    });
+    expect(day?.consumedMl).toBe(650);
+    expect(day?.completedBottleCount).toBe(1);
   });
 
   it("records the first event that reaches the goal", () => {

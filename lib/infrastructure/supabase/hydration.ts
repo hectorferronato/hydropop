@@ -8,6 +8,7 @@ import {
   type HydrationSource,
 } from "@/lib/domain/hydration/event-types";
 
+import type { PendingDatabase } from "./database.pending-types";
 import type { Database, Json } from "./database.types";
 
 type EventRow = Database["public"]["Tables"]["hydration_events"]["Row"];
@@ -22,8 +23,13 @@ export type HydrationProfile = Pick<
 >;
 
 export type HydrationBottle = Pick<
-  Database["public"]["Tables"]["bottles"]["Row"],
-  "capacity_ml" | "id" | "is_primary" | "name"
+  PendingDatabase["public"]["Tables"]["bottles"]["Row"],
+  | "archived_at"
+  | "capacity_ml"
+  | "id"
+  | "is_primary"
+  | "name"
+  | "typical_fill_ml"
 >;
 
 export type HydrationGoal = Pick<
@@ -37,6 +43,7 @@ export type HydrationGoal = Pick<
 >;
 
 export type HydrationSnapshot = {
+  bottles: HydrationBottle[];
   events: HydrationEvent[];
   goals: HydrationGoal[];
   primaryBottle: HydrationBottle | null;
@@ -101,7 +108,7 @@ export function toHydrationEvent(row: EventRow): HydrationEvent {
 }
 
 export async function getHydrationSnapshot(
-  supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient<PendingDatabase>,
   userId: string,
 ): Promise<HydrationSnapshot> {
   const [profileResult, bottleResult, goalsResult, eventsResult] =
@@ -115,14 +122,12 @@ export async function getHydrationSnapshot(
         .maybeSingle(),
       supabase
         .from("bottles")
-        .select("capacity_ml, id, is_primary, name")
+        .select(
+          "archived_at, capacity_ml, id, is_primary, name, typical_fill_ml",
+        )
         .eq("user_id", userId)
-        .eq("is_primary", true)
-        .is("archived_at", null)
         .order("created_at", { ascending: false })
-        .order("id", { ascending: true })
-        .limit(1)
-        .maybeSingle(),
+        .order("id", { ascending: true }),
       supabase
         .from("hydration_goals")
         .select(
@@ -158,9 +163,13 @@ export async function getHydrationSnapshot(
   }
 
   return {
+    bottles: bottleResult.data ?? [],
     events: (eventsResult.data ?? []).map(toHydrationEvent),
     goals: goalsResult.data ?? [],
-    primaryBottle: bottleResult.data,
+    primaryBottle:
+      bottleResult.data?.find(
+        (bottle) => bottle.is_primary && bottle.archived_at === null,
+      ) ?? null,
     profile: profileResult.data,
   };
 }

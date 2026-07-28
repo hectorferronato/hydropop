@@ -1,13 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { CalendarSummary } from "@/lib/contracts/calendar";
-import type { Database } from "@/lib/infrastructure/supabase/database.types";
+import type { PendingDatabase } from "@/lib/infrastructure/supabase/database.pending-types";
 import { getHydrationSnapshot } from "@/lib/infrastructure/supabase/hydration";
 
 import { buildCalendarSummary } from "./hydration-projection";
 
 export async function getCalendarSummary(
-  supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient<PendingDatabase>,
   userId: string,
   month: string,
 ): Promise<CalendarSummary> {

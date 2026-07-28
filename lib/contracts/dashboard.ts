@@ -4,12 +4,16 @@ import type { HydrationTimelineEvent } from "@/lib/domain/hydration/event-types"
 import type { VolumeUnit } from "@/lib/units/volume";
 
 export type TodayDashboard = {
-  activeBottle: {
-    activeCycle: boolean;
+  lastBottleCompleted: {
+    amountMl: number;
+    bottleName: string;
+    occurredAt: string;
+  } | null;
+  primaryBottle: {
     capacityMl: number;
     id: string;
     name: string;
-    startedAt: string | null;
+    normalFillMl: number;
   } | null;
   coaching: HydrationCoaching;
   currentStreak: number;

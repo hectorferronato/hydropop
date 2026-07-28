@@ -45,7 +45,7 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
   const eventResponse = await request.post("/api/v1/hydration-events", {
     data: {
       bottleId: "4b7640b8-8a58-4f78-ab38-c79a7d2da7d0",
-      eventType: "fill_started",
+      eventType: "bottle_completed",
       idempotencyKey: "playwright-event-key",
       occurredAt: new Date().toISOString(),
       source: "simulator",

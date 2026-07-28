@@ -14,6 +14,7 @@ type CurrentSettingsSnapshot = {
     is_primary: boolean;
     model: string | null;
     name: string;
+    typical_fill_ml: number | null;
   } | null;
   goal: {
     daily_goal_ml: number;
@@ -53,6 +54,7 @@ export function toCurrentSetupInput(
     bottleIsPrimary: bottle.is_primary,
     bottleModel: bottle.model ?? "",
     bottleName: bottle.name,
+    bottleTypicalFillMl: bottle.typical_fill_ml,
     dailyGoalMl: goal.daily_goal_ml,
     displayName: profile.display_name.trim(),
     preferredUnit: parseVolumeUnit(profile.preferred_unit),
@@ -97,5 +99,6 @@ export function applyBottleSettings(
     bottleCapacityMl: bottle.bottleCapacityMl,
     bottleModel: bottle.bottleModel,
     bottleName: bottle.bottleName,
+    bottleTypicalFillMl: bottle.bottleTypicalFillMl,
   };
 }

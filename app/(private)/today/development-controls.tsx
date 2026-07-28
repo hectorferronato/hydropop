@@ -6,14 +6,15 @@ import { useState } from "react";
 import type { ApiResponse } from "@/lib/contracts/api-response";
 import type { ProcessHydrationEventResult } from "@/lib/contracts/hydration-events";
 import type {
-  HydrationEventType,
+  ClientHydrationEventType,
   HydrationTimelineEvent,
 } from "@/lib/domain/hydration/event-types";
 import { formatDisplayVolume, type VolumeUnit } from "@/lib/units/volume";
 
 type IntendedAction = {
-  eventType: HydrationEventType;
+  eventType: ClientHydrationEventType;
   label: string;
+  primary?: boolean;
   volumeMl?: number;
 };
 
@@ -33,9 +34,11 @@ export function DevelopmentControls({
   const [message, setMessage] = useState<string | null>(null);
   const latestReversible = latestReversibleEvent;
   const actions: IntendedAction[] = [
-    { eventType: "fill_started", label: "Start first fill" },
-    { eventType: "refill", label: "Refill" },
-    { eventType: "bottle_finished", label: "Finish bottle" },
+    {
+      eventType: "bottle_completed",
+      label: "Complete one bottle",
+      primary: true,
+    },
     {
       eventType: "manual_intake",
       label: `Manual +${formatDisplayVolume(adjustmentAmountMl, unit)} ${unit}`,
@@ -138,8 +141,9 @@ export function DevelopmentControls({
         Development controls
       </p>
       <p className="mt-2 text-xs leading-5 text-amber-900/60">
-        These controls use the same versioned API as future clients and are
-        excluded from production builds.
+        Finish your normal bottle amount, then press once. These controls use
+        the same versioned API as future clients and are excluded from
+        production builds.
       </p>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {actions.map((action) => (
@@ -148,7 +152,11 @@ export function DevelopmentControls({
             type="button"
             disabled={pendingAction !== null}
             onClick={() => void submitAction(action)}
-            className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs font-bold text-amber-900 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50"
+            className={
+              action.primary
+                ? "bg-brand-primary hover:bg-brand-primary/90 col-span-2 rounded-xl px-3 py-3 text-xs font-bold text-white transition disabled:cursor-wait disabled:opacity-50 sm:col-span-3"
+                : "rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs font-bold text-amber-900 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50"
+            }
           >
             {pendingAction === action.label ? "Saving…" : action.label}
           </button>

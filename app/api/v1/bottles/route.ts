@@ -19,7 +19,7 @@ export async function GET() {
   )
     .from("bottles")
     .select(
-      "archived_at, brand, capacity_ml, created_at, id, is_primary, model, name",
+      "archived_at, brand, capacity_ml, created_at, id, is_primary, model, name, typical_fill_ml",
     )
     .eq("user_id", authentication.user.id)
     .order("created_at", { ascending: false });
@@ -65,10 +65,11 @@ export async function POST(request: Request) {
       is_primary: parsed.data.isPrimary,
       model: parsed.data.model || null,
       name: parsed.data.name,
+      typical_fill_ml: parsed.data.typicalFillMl ?? null,
       user_id: authentication.user.id,
     })
     .select(
-      "archived_at, brand, capacity_ml, created_at, id, is_primary, model, name",
+      "archived_at, brand, capacity_ml, created_at, id, is_primary, model, name, typical_fill_ml",
     )
     .single();
 

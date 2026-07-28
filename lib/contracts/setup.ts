@@ -15,6 +15,12 @@ const displayedVolumeSchema = z
   .transform(Number)
   .refine((value) => value > 0, "Enter a positive number.");
 
+const optionalDisplayedVolumeSchema = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  displayedVolumeSchema.optional(),
+);
+
 const optionalTextSchema = z
   .string()
   .trim()
@@ -46,6 +52,7 @@ const setupFormSchema = z.object({
     .refine(Boolean, "Choose this as your primary bottle."),
   bottleModel: optionalTextSchema,
   bottleName: bottleNameSchema,
+  bottleTypicalFill: optionalDisplayedVolumeSchema,
   dailyGoal: displayedVolumeSchema,
   displayName: displayNameSchema,
   preferredUnit: z.enum(["ml", "oz"]),
@@ -72,6 +79,7 @@ const bottleSettingsSchema = setupFormSchema.pick({
   bottleCapacity: true,
   bottleModel: true,
   bottleName: true,
+  bottleTypicalFill: true,
 });
 
 export type SetupField = keyof z.input<typeof setupFormSchema>;
@@ -88,6 +96,7 @@ export type SetupInput = {
   bottleIsPrimary: boolean;
   bottleModel: string;
   bottleName: string;
+  bottleTypicalFillMl: number | null;
   dailyGoalMl: number;
   displayName: string;
   preferredUnit: VolumeUnit;
@@ -103,6 +112,7 @@ export type SetupFormValues = {
   bottleIsPrimary: boolean;
   bottleModel: string;
   bottleName: string;
+  bottleTypicalFill: string;
   dailyGoal: string;
   displayName: string;
   preferredUnit: VolumeUnit;
@@ -137,6 +147,7 @@ export type BottleSettingsInput = {
   bottleCapacityMl: number;
   bottleModel: string;
   bottleName: string;
+  bottleTypicalFillMl: number | null;
 };
 
 export function parseProfileSettingsFormData(
@@ -203,6 +214,7 @@ export function parseBottleSettingsFormData(
     bottleCapacity: formData.get("bottleCapacity"),
     bottleModel: formData.get("bottleModel"),
     bottleName: formData.get("bottleName"),
+    bottleTypicalFill: formData.get("bottleTypicalFill"),
   });
 
   if (!parsed.success) {
@@ -216,11 +228,26 @@ export function parseBottleSettingsFormData(
     parsed.data.bottleCapacity,
     unit,
   );
+  const bottleTypicalFillMl =
+    parsed.data.bottleTypicalFill === undefined
+      ? null
+      : toStoredMilliliters(parsed.data.bottleTypicalFill, unit);
 
   if (bottleCapacityMl > 10_000) {
     return {
       fieldErrors: {
         bottleCapacity: ["Bottle capacity must be 10,000 ml or less."],
+      },
+      success: false,
+    };
+  }
+
+  if (bottleTypicalFillMl !== null && bottleTypicalFillMl > bottleCapacityMl) {
+    return {
+      fieldErrors: {
+        bottleTypicalFill: [
+          "Typical fill amount cannot exceed bottle capacity.",
+        ],
       },
       success: false,
     };
@@ -232,6 +259,7 @@ export function parseBottleSettingsFormData(
       bottleCapacityMl,
       bottleModel: parsed.data.bottleModel,
       bottleName: parsed.data.bottleName,
+      bottleTypicalFillMl,
     },
     success: true,
   };
@@ -245,6 +273,7 @@ export function parseSetupFormData(formData: FormData): SetupFormResult {
     bottleIsPrimary: formData.get("bottleIsPrimary") === "on",
     bottleModel: formData.get("bottleModel"),
     bottleName: formData.get("bottleName"),
+    bottleTypicalFill: formData.get("bottleTypicalFill"),
     dailyGoal: formData.get("dailyGoal"),
     displayName: formData.get("displayName"),
     preferredUnit: formData.get("preferredUnit"),
@@ -266,6 +295,10 @@ export function parseSetupFormData(formData: FormData): SetupFormResult {
     parsed.data.bottleCapacity,
     preferredUnit,
   );
+  const bottleTypicalFillMl =
+    parsed.data.bottleTypicalFill === undefined
+      ? null
+      : toStoredMilliliters(parsed.data.bottleTypicalFill, preferredUnit);
   const volumeErrors: Partial<Record<SetupField, string[]>> = {};
 
   if (dailyGoalMl > 20_000) {
@@ -275,6 +308,12 @@ export function parseSetupFormData(formData: FormData): SetupFormResult {
   if (bottleCapacityMl > 10_000) {
     volumeErrors.bottleCapacity = [
       "Bottle capacity must be 10,000 ml or less.",
+    ];
+  }
+
+  if (bottleTypicalFillMl !== null && bottleTypicalFillMl > bottleCapacityMl) {
+    volumeErrors.bottleTypicalFill = [
+      "Typical fill amount cannot exceed bottle capacity.",
     ];
   }
 
@@ -290,6 +329,7 @@ export function parseSetupFormData(formData: FormData): SetupFormResult {
       bottleIsPrimary: parsed.data.bottleIsPrimary,
       bottleModel: parsed.data.bottleModel,
       bottleName: parsed.data.bottleName,
+      bottleTypicalFillMl,
       dailyGoalMl,
       displayName: parsed.data.displayName,
       preferredUnit,

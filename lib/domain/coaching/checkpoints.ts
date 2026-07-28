@@ -4,29 +4,24 @@ export type HydrationCheckpoint = {
 };
 
 export function calculateNextCheckpoint({
-  bottleCapacityMl,
+  normalFillMl,
   consumedMl,
   goalMl,
   scheduleTargetAt,
   scheduleWakeAt,
 }: {
-  bottleCapacityMl: number | null;
+  normalFillMl: number | null;
   consumedMl: number;
   goalMl: number | null;
   scheduleTargetAt: string | null;
   scheduleWakeAt: string | null;
 }): HydrationCheckpoint | null {
-  if (
-    !goalMl ||
-    !bottleCapacityMl ||
-    bottleCapacityMl <= 0 ||
-    consumedMl >= goalMl
-  ) {
+  if (!goalMl || !normalFillMl || normalFillMl <= 0 || consumedMl >= goalMl) {
     return null;
   }
 
   const nextMultiple =
-    (Math.floor(consumedMl / bottleCapacityMl) + 1) * bottleCapacityMl;
+    (Math.floor(consumedMl / normalFillMl) + 1) * normalFillMl;
   const targetVolumeMl = Math.min(goalMl, nextMultiple);
   let targetAt: string | null = null;
 

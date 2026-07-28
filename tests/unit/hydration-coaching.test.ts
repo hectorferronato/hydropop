@@ -6,7 +6,7 @@ import { calculateExpectedIntake } from "@/lib/domain/coaching/expected-intake";
 import { localDateTimeToInstant } from "@/lib/domain/hydration/hydration-day";
 
 const baseInput = {
-  bottleCapacityMl: 710,
+  normalFillMl: 710,
   consumedMl: 700,
   date: "2026-07-28",
   goalMl: 2_130,
@@ -93,6 +93,26 @@ describe("deterministic hydration coaching", () => {
     expect(coaching.nextCheckpoint?.targetVolumeMl).toBe(2_000);
   });
 
+  it("uses the configured typical fill for equivalents and checkpoints", () => {
+    const coaching = calculateHydrationCoaching({
+      ...baseInput,
+      normalFillMl: 650,
+    });
+
+    expect(coaching.bottleEquivalentsRemaining).toBe(2.2);
+    expect(coaching.nextCheckpoint?.targetVolumeMl).toBe(1_300);
+  });
+
+  it("uses physical capacity when it is the effective normal-fill fallback", () => {
+    const coaching = calculateHydrationCoaching({
+      ...baseInput,
+      normalFillMl: 710,
+    });
+
+    expect(coaching.bottleEquivalentsRemaining).toBe(2);
+    expect(coaching.nextCheckpoint?.targetVolumeMl).toBe(710);
+  });
+
   it("supports overnight hydration schedules", () => {
     const expected = calculateExpectedIntake({
       ...baseInput,
@@ -132,7 +152,7 @@ describe("deterministic hydration coaching", () => {
   it("does not invent bottle equivalents without a primary bottle", () => {
     const coaching = calculateHydrationCoaching({
       ...baseInput,
-      bottleCapacityMl: null,
+      normalFillMl: null,
     });
 
     expect(coaching.bottleEquivalentsRemaining).toBeNull();

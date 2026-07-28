@@ -10,6 +10,7 @@ const persistedSettings = {
     is_primary: true,
     model: "FreeSip",
     name: "Work bottle",
+    typical_fill_ml: 650,
   },
   goal: {
     daily_goal_ml: 2130,
@@ -58,6 +59,8 @@ describe("settings summary", () => {
       isPrimary: true,
       model: "FreeSip",
       name: "Work bottle",
+      normalFill: "22 oz",
+      typicalFill: "22 oz",
     });
   });
 
@@ -69,5 +72,16 @@ describe("settings summary", () => {
 
     expect(summary.goal?.dailyGoal).toBe("2130 ml");
     expect(summary.bottle?.capacity).toBe("710 ml");
+    expect(summary.bottle?.normalFill).toBe("650 ml");
+  });
+
+  it("shows that full capacity is used when typical fill is blank", () => {
+    const summary = toSettingsSummary({
+      ...persistedSettings,
+      bottle: { ...persistedSettings.bottle, typical_fill_ml: null },
+    });
+
+    expect(summary.bottle?.typicalFill).toBe("Not set — using full capacity");
+    expect(summary.bottle?.normalFill).toBe("24 oz");
   });
 });

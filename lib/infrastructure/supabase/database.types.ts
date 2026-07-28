@@ -323,6 +323,19 @@ export type Database = {
     }
     Functions: {
       is_valid_timezone: { Args: { timezone_name: string }; Returns: boolean }
+      process_hydration_event: {
+        Args: {
+          p_bottle_id: string
+          p_device_id?: string
+          p_event_type: string
+          p_idempotency_key: string
+          p_occurred_at: string
+          p_reverses_event_id?: string
+          p_source: string
+          p_volume_ml?: number
+        }
+        Returns: Json
+      }
       save_onboarding: {
         Args: {
           p_bottle_brand: string

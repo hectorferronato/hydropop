@@ -8,6 +8,7 @@ type SettingsSnapshot = {
     is_primary: boolean;
     model: string | null;
     name: string;
+    typical_fill_ml: number | null;
   } | null;
   goal: {
     daily_goal_ml: number;
@@ -42,6 +43,8 @@ export type SettingsSummary = {
     isPrimary: boolean;
     model: string;
     name: string;
+    normalFill: string;
+    typicalFill: string;
   } | null;
   goal: {
     dailyGoal: string;
@@ -73,6 +76,17 @@ export function toSettingsSummary(snapshot: SettingsSnapshot): SettingsSummary {
           isPrimary: snapshot.bottle.is_primary,
           model: snapshot.bottle.model ?? "Not provided",
           name: snapshot.bottle.name,
+          normalFill: `${formatDisplayVolume(
+            snapshot.bottle.typical_fill_ml ?? snapshot.bottle.capacity_ml,
+            unit,
+          )} ${unit}`,
+          typicalFill:
+            snapshot.bottle.typical_fill_ml === null
+              ? "Not set — using full capacity"
+              : `${formatDisplayVolume(
+                  snapshot.bottle.typical_fill_ml,
+                  unit,
+                )} ${unit}`,
         }
       : null,
     goal: snapshot.goal

@@ -1,7 +1,6 @@
 import type { CalendarSummary } from "@/lib/contracts/calendar";
 import type { TodayDashboard } from "@/lib/contracts/dashboard";
 import { calculateHydrationCoaching } from "@/lib/domain/coaching/coaching";
-import { reconstructBottleCycle } from "@/lib/domain/hydration/bottle-cycle";
 import { summarizeHydrationDay } from "@/lib/domain/hydration/daily-summary";
 import { reconstructEffectiveEvents } from "@/lib/domain/hydration/effective-events";
 import {
@@ -84,10 +83,18 @@ export function buildTodayDashboard(
   const eventsThroughNow = history.effectiveEvents.filter(
     (event) => Date.parse(event.occurredAt) <= now.getTime(),
   );
-  const cycle = reconstructBottleCycle(
-    eventsThroughNow,
-    snapshot.primaryBottle?.id,
-  );
+  const lastCompletedEvent = eventsThroughNow
+    .filter(
+      (event) =>
+        event.eventType === "bottle_completed" ||
+        event.eventType === "refill" ||
+        event.eventType === "bottle_finished",
+    )
+    .at(-1);
+  const normalFillMl = snapshot.primaryBottle
+    ? (snapshot.primaryBottle.typical_fill_ml ??
+      snapshot.primaryBottle.capacity_ml)
+    : null;
   const daySummary = summarizeHydrationDay({
     date,
     goalMl: goal?.daily_goal_ml ?? null,
@@ -95,7 +102,7 @@ export function buildTodayDashboard(
     timezone,
   });
   const coaching = calculateHydrationCoaching({
-    bottleCapacityMl: snapshot.primaryBottle?.capacity_ml ?? null,
+    normalFillMl,
     consumedMl: daySummary.consumedMl,
     date,
     goalMl: goal?.daily_goal_ml ?? null,
@@ -109,13 +116,22 @@ export function buildTodayDashboard(
   });
 
   return {
-    activeBottle: snapshot.primaryBottle
+    lastBottleCompleted: lastCompletedEvent
       ? {
-          activeCycle: cycle.active,
+          amountMl: lastCompletedEvent.creditedVolumeMl,
+          bottleName:
+            snapshot.bottles.find(
+              (bottle) => bottle.id === lastCompletedEvent.bottleId,
+            )?.name ?? "Bottle",
+          occurredAt: lastCompletedEvent.occurredAt,
+        }
+      : null,
+    primaryBottle: snapshot.primaryBottle
+      ? {
           capacityMl: snapshot.primaryBottle.capacity_ml,
           id: snapshot.primaryBottle.id,
           name: snapshot.primaryBottle.name,
-          startedAt: cycle.startedAt,
+          normalFillMl: normalFillMl ?? snapshot.primaryBottle.capacity_ml,
         }
       : null,
     coaching,

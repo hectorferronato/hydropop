@@ -25,7 +25,7 @@ export type HydrationCoaching = {
 };
 
 export function calculateHydrationCoaching({
-  bottleCapacityMl,
+  normalFillMl,
   consumedMl,
   date,
   goalMl,
@@ -34,7 +34,7 @@ export function calculateHydrationCoaching({
   timezone,
   wakeTime,
 }: {
-  bottleCapacityMl: number | null;
+  normalFillMl: number | null;
   consumedMl: number;
   date: string;
   goalMl: number | null;
@@ -64,7 +64,7 @@ export function calculateHydrationCoaching({
   return {
     bottleEquivalentsRemaining: calculateBottleEquivalents(
       remainingMl,
-      bottleCapacityMl,
+      normalFillMl,
     ),
     expectedMl: expected?.expectedMl ?? null,
     message: createCoachingMessage({
@@ -72,7 +72,7 @@ export function calculateHydrationCoaching({
       status,
     }),
     nextCheckpoint: calculateNextCheckpoint({
-      bottleCapacityMl,
+      normalFillMl,
       consumedMl: safeConsumedMl,
       goalMl,
       scheduleTargetAt: expected?.targetAt ?? null,

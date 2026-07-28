@@ -25,11 +25,11 @@ export function calculateCatchUpRate({
 
 export function calculateBottleEquivalents(
   remainingMl: number,
-  bottleCapacityMl: number | null,
+  normalFillMl: number | null,
 ): number | null {
-  if (!bottleCapacityMl || bottleCapacityMl <= 0) {
+  if (!normalFillMl || normalFillMl <= 0) {
     return null;
   }
 
-  return Math.round((remainingMl / bottleCapacityMl) * 10) / 10;
+  return Math.round((remainingMl / normalFillMl) * 10) / 10;
 }
