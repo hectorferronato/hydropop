@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { buildTodayDashboard } from "@/lib/application/hydration/hydration-projection";
 import type { AtomicHydrationEventExecutor } from "@/lib/application/hydration/process-hydration-event";
 import {
+  calculateHalfNfcVolumeMl,
   completeNfcBottle,
   hasRecentEffectiveCompletion,
 } from "@/lib/application/nfc/complete-nfc-bottle";
@@ -102,12 +103,15 @@ function snapshot(events: HydrationEvent[] = []): HydrationSnapshot {
   };
 }
 
-function eventRow(volumeMl = 650) {
+function eventRow(
+  volumeMl = 650,
+  eventType: HydrationEvent["eventType"] = "bottle_completed",
+) {
   return {
     bottle_id: bottleId,
     created_at: now.toISOString(),
     device_id: null,
-    event_type: "bottle_completed",
+    event_type: eventType,
     id: eventId,
     idempotency_key: idempotencyKey,
     metadata: {
@@ -135,18 +139,20 @@ function validInput(overrides: Record<string, unknown> = {}) {
 
 function dependencies({
   duplicate = false,
+  eventType = "bottle_completed",
   preSnapshot = snapshot(),
   resolved = resolution,
   volumeMl = 650,
 }: {
   duplicate?: boolean;
+  eventType?: HydrationEvent["eventType"];
   preSnapshot?: HydrationSnapshot;
   resolved?: NfcScanResolution | null;
   volumeMl?: number;
 } = {}) {
-  const updatedSnapshot = snapshot([hydrationEvent({ volumeMl })]);
+  const updatedSnapshot = snapshot([hydrationEvent({ eventType, volumeMl })]);
   const executeAtomicEvent = vi.fn<AtomicHydrationEventExecutor>(async () => ({
-    data: { duplicate, event: eventRow(volumeMl), ok: true },
+    data: { duplicate, event: eventRow(volumeMl, eventType), ok: true },
     error: null,
   }));
   const markConfirmed = vi.fn(async () => "2026-07-28T16:00:01.000Z");
@@ -180,6 +186,7 @@ describe("NFC bottle completion integration", () => {
       p_source: "nfc",
     });
     expect(result.creditedAmountMl).toBe(650);
+    expect(result.action).toBe("full");
     expect(result.daySummary.consumedMl).toBe(650);
     expect(result.daySummary.completedBottleCount).toBe(1);
   });
@@ -204,6 +211,73 @@ describe("NFC bottle completion integration", () => {
 
     expect(result.event.volumeMl).toBe(710);
     expect(result.creditedAmountMl).toBe(710);
+  });
+
+  it("records half the normal fill as manual intake without completing a bottle", async () => {
+    const deps = dependencies({
+      eventType: "manual_intake",
+      volumeMl: 325,
+    });
+    const result = await completeNfcBottle({
+      ...deps,
+      input: validInput({ action: "half" }),
+      now,
+    });
+
+    expect(calculateHalfNfcVolumeMl(resolution.normalFillMl)).toBe(325);
+    expect(deps.executeAtomicEvent).toHaveBeenCalledWith({
+      p_bottle_id: bottleId,
+      p_event_type: "manual_intake",
+      p_idempotency_key: idempotencyKey,
+      p_occurred_at: now.toISOString(),
+      p_source: "nfc",
+      p_volume_ml: 325,
+    });
+    expect(result.action).toBe("half");
+    expect(result.creditedAmountMl).toBe(325);
+    expect(result.daySummary.consumedMl).toBe(325);
+    expect(result.daySummary.completedBottleCount).toBe(0);
+    expect(deps.markConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("rounds a half confirmation from the server-resolved normal fill", async () => {
+    const deps = dependencies({
+      eventType: "manual_intake",
+      resolved: { ...resolution, normalFillMl: 651 },
+      volumeMl: 326,
+    });
+
+    await completeNfcBottle({
+      ...deps,
+      input: validInput({ action: "half" }),
+      now,
+    });
+
+    expect(deps.executeAtomicEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ p_volume_ml: 326 }),
+    );
+  });
+
+  it("uses bottle capacity for half only when typical fill is absent", async () => {
+    const deps = dependencies({
+      eventType: "manual_intake",
+      resolved: {
+        ...resolution,
+        bottle: { ...resolution.bottle, typicalFillMl: null },
+        normalFillMl: 710,
+      },
+      volumeMl: 355,
+    });
+
+    await completeNfcBottle({
+      ...deps,
+      input: validInput({ action: "half" }),
+      now,
+    });
+
+    expect(deps.executeAtomicEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ p_volume_ml: 355 }),
+    );
   });
 
   it.each([
@@ -243,6 +317,51 @@ describe("NFC bottle completion integration", () => {
     expect(deps.markConfirmed).toHaveBeenCalledWith(tagId, eventId);
   });
 
+  it("returns the original half event for duplicate idempotency", async () => {
+    const existing = hydrationEvent({
+      eventType: "manual_intake",
+      volumeMl: 325,
+    });
+    const deps = dependencies({
+      duplicate: true,
+      eventType: "manual_intake",
+      preSnapshot: snapshot([existing]),
+      volumeMl: 325,
+    });
+    const result = await completeNfcBottle({
+      ...deps,
+      input: validInput({ action: "half" }),
+      now,
+    });
+
+    expect(result.duplicate).toBe(true);
+    expect(result.action).toBe("half");
+    expect(result.event.id).toBe(eventId);
+    expect(deps.executeAtomicEvent).toHaveBeenCalledOnce();
+    expect(deps.markConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("keeps a half confirmation reversible through immutable history", () => {
+    const half = hydrationEvent({
+      eventType: "manual_intake",
+      volumeMl: 325,
+    });
+    const reversal = hydrationEvent({
+      eventType: "event_reversed",
+      id: "half-reversal",
+      idempotencyKey: "half-reversal-key",
+      occurredAt: "2026-07-28T16:01:00.000Z",
+      reversesEventId: half.id,
+      volumeMl: null,
+    });
+
+    const projected = buildTodayDashboard(snapshot([half, reversal]), now);
+
+    expect(projected.daySummary.consumedMl).toBe(0);
+    expect(projected.daySummary.completedBottleCount).toBe(0);
+    expect(snapshot([half, reversal]).events).toHaveLength(2);
+  });
+
   it("rejects an idempotency key already used by another action", async () => {
     const existing = hydrationEvent({
       eventType: "manual_intake",
@@ -264,6 +383,23 @@ describe("NFC bottle completion integration", () => {
     expect(deps.markConfirmed).not.toHaveBeenCalled();
   });
 
+  it("rejects a conflicting event returned by a concurrent duplicate request", async () => {
+    const deps = dependencies({
+      duplicate: true,
+      eventType: "manual_intake",
+      volumeMl: 325,
+    });
+
+    await expect(
+      completeNfcBottle({
+        ...deps,
+        input: validInput(),
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "DUPLICATE_EVENT" });
+    expect(deps.markConfirmed).not.toHaveBeenCalled();
+  });
+
   it("warns when the same bottle was completed within 60 seconds", async () => {
     const recent = hydrationEvent({
       id: "recent-event",
@@ -281,6 +417,28 @@ describe("NFC bottle completion integration", () => {
     ).rejects.toMatchObject({ code: "RECENT_COMPLETION" });
     expect(deps.executeAtomicEvent).not.toHaveBeenCalled();
     expect(deps.markConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("does not apply the rapid full-bottle warning to a deliberate half intake", async () => {
+    const recent = hydrationEvent({
+      id: "recent-event",
+      idempotencyKey: "different-key",
+      occurredAt: "2026-07-28T15:59:30.000Z",
+    });
+    const deps = dependencies({
+      eventType: "manual_intake",
+      preSnapshot: snapshot([recent]),
+      volumeMl: 325,
+    });
+
+    const result = await completeNfcBottle({
+      ...deps,
+      input: validInput({ action: "half" }),
+      now,
+    });
+
+    expect(result.action).toBe("half");
+    expect(deps.executeAtomicEvent).toHaveBeenCalledOnce();
   });
 
   it("allows an explicit rapid-completion confirmation", async () => {

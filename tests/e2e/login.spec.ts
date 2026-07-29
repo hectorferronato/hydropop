@@ -2,6 +2,53 @@ import { expect, test } from "@playwright/test";
 
 const nfcToken = "A".repeat(43);
 
+test("keeps login centered, usable, and free of horizontal overflow on pilot viewports", async ({
+  page,
+}) => {
+  const viewports = [
+    { height: 568, width: 320 },
+    { height: 844, width: 390 },
+    { height: 915, width: 412 },
+    { height: 390, width: 844 },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto("/auth/login");
+
+    const card = page.getByTestId("login-card");
+    const signIn = page.getByRole("button", { name: "Sign in" });
+    await expect(card).toBeVisible();
+    await expect(signIn).toBeVisible();
+
+    const layout = await page.evaluate(() => {
+      const cardElement = document.querySelector<HTMLElement>(
+        '[data-testid="login-card"]',
+      );
+      const buttonElement = document.querySelector<HTMLElement>(
+        'button[type="submit"]',
+      );
+      const cardRect = cardElement?.getBoundingClientRect();
+      const buttonRect = buttonElement?.getBoundingClientRect();
+
+      return {
+        buttonBottom: buttonRect?.bottom ?? Number.POSITIVE_INFINITY,
+        buttonTop: buttonRect?.top ?? Number.NEGATIVE_INFINITY,
+        cardCenter: cardRect ? cardRect.left + cardRect.width / 2 : 0,
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      };
+    });
+
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+    expect(
+      Math.abs(layout.cardCenter - layout.clientWidth / 2),
+    ).toBeLessThanOrEqual(2);
+    expect(layout.buttonTop).toBeGreaterThanOrEqual(0);
+    expect(layout.buttonBottom).toBeLessThanOrEqual(viewport.height);
+  }
+});
+
 test("renders login and explains an unauthorized account", async ({ page }) => {
   await page.goto(`/auth/login?next=%2Ft%2F${nfcToken}`);
 

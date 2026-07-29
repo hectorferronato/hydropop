@@ -22,7 +22,7 @@ export default async function LoginPage({
   const destination = sanitizeLoginDestination(requestedDestination);
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-10 sm:px-8">
+    <main className="login-main relative flex min-h-dvh w-full max-w-full items-center justify-center overflow-x-clip overflow-y-auto pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:p-8">
       <div
         className="bg-brand-primary/10 pointer-events-none absolute top-[-8rem] right-[-6rem] size-80 rounded-full blur-3xl"
         aria-hidden="true"
@@ -32,7 +32,10 @@ export default async function LoginPage({
         aria-hidden="true"
       />
 
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/80 bg-white/85 shadow-[0_30px_100px_rgba(62,41,255,0.14)] backdrop-blur md:grid-cols-[0.9fr_1.1fr]">
+      <div
+        data-testid="login-card"
+        className="relative grid w-full max-w-5xl min-w-0 overflow-hidden rounded-[2rem] border border-white/80 bg-white/85 shadow-[0_30px_100px_rgba(62,41,255,0.14)] backdrop-blur md:grid-cols-[0.9fr_1.1fr]"
+      >
         <section className="bg-brand-primary relative hidden overflow-hidden p-10 text-white md:flex md:flex-col md:justify-between">
           <div className="absolute -right-20 -bottom-24 size-72 rounded-full border-[48px] border-white/10" />
           <div className="absolute top-28 -left-12 size-36 rounded-full border-[24px] border-white/10" />
@@ -51,9 +54,9 @@ export default async function LoginPage({
           </div>
         </section>
 
-        <section className="px-6 py-8 sm:px-12 sm:py-12">
+        <section className="login-panel min-w-0 px-5 py-6 sm:px-12 sm:py-12">
           <Brand />
-          <div className="mt-12">
+          <div className="login-copy mt-8 sm:mt-12">
             <p className="text-brand-primary text-xs font-bold tracking-[0.18em] uppercase">
               Welcome back
             </p>

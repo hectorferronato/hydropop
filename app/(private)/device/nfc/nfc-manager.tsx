@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
+import { ActionSpinner } from "@/components/action-feedback";
 import { buildNfcUrl } from "@/lib/application/urls/site-url";
 import type { ApiResponse } from "@/lib/contracts/api-response";
 import { validateNfcFriendlyCode } from "@/lib/contracts/nfc-friendly-code";
@@ -21,6 +22,20 @@ type FriendlyAvailability = {
   code: string | null;
   message: string;
 };
+
+type TagEditDraft = {
+  bottleId: string;
+  friendlyCode: string;
+  label: string;
+};
+
+function tagEditDraft(tag: NfcTagSummary): TagEditDraft {
+  return {
+    bottleId: tag.bottle.id,
+    friendlyCode: tag.friendlyCode ?? "",
+    label: tag.label ?? "",
+  };
+}
 
 async function readApiResponse<Data>(
   response: Response,
@@ -123,7 +138,7 @@ function CopyUrlButton({ label, url }: { label: string; url: string }) {
         onClick={() => void copy()}
         className="border-brand-primary/20 text-brand-primary h-11 rounded-xl border bg-white px-4 text-xs font-bold"
       >
-        {state === "copied" ? "✓ Copied!" : label}
+        {state === "copied" ? "Copied! ✓" : label}
       </button>
       <span aria-live="polite" className="mt-1 block min-h-4 text-xs">
         {state === "copied"
@@ -179,21 +194,22 @@ export function NfcManager({
   const [credential, setCredential] = useState<IssuedNfcCredential | null>(
     null,
   );
-  const [credentialKind, setCredentialKind] = useState<"created" | "rotated">(
-    "created",
-  );
   const [creationComplete, setCreationComplete] = useState(false);
   const [createCode, setCreateCode] = useState("");
-  const [editCodes, setEditCodes] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      initialList.tags.map((tag) => [tag.id, tag.friendlyCode ?? ""]),
-    ),
+  const [editDrafts, setEditDrafts] = useState<Record<string, TagEditDraft>>(
+    () =>
+      Object.fromEntries(
+        initialList.tags.map((tag) => [tag.id, tagEditDraft(tag)]),
+      ),
   );
+  const [savedTagId, setSavedTagId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const createFormRef = useRef<HTMLFormElement>(null);
   const createSubmissionLockedRef = useRef(false);
+  const updateSubmissionLocksRef = useRef(new Set<string>());
   const resultRef = useRef<HTMLElement>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const createAvailability = useMemo(
     () => friendlyAvailability(createCode, list),
     [createCode, list],
@@ -211,6 +227,15 @@ export function NfcManager({
     resultRef.current?.focus({ preventScroll: true });
   }, [credential]);
 
+  useEffect(
+    () => () => {
+      if (savedTimerRef.current) {
+        clearTimeout(savedTimerRef.current);
+      }
+    },
+    [],
+  );
+
   function replaceTag(tag: NfcTagSummary) {
     setList((current) => ({
       ...current,
@@ -226,9 +251,9 @@ export function NfcManager({
           : current.friendlyCodeReservations,
       tags: current.tags.map((item) => (item.id === tag.id ? tag : item)),
     }));
-    setEditCodes((current) => ({
+    setEditDrafts((current) => ({
       ...current,
-      [tag.id]: tag.friendlyCode ?? "",
+      [tag.id]: tagEditDraft(tag),
     }));
   }
 
@@ -278,11 +303,10 @@ export function NfcManager({
           : current.friendlyCodeReservations,
         tags: [payload.data.tag, ...current.tags],
       }));
-      setEditCodes((current) => ({
+      setEditDrafts((current) => ({
         ...current,
-        [payload.data.tag.id]: payload.data.tag.friendlyCode ?? "",
+        [payload.data.tag.id]: tagEditDraft(payload.data.tag),
       }));
-      setCredentialKind("created");
       setCredential(payload.data);
       setCreationComplete(true);
     } catch {
@@ -300,36 +324,6 @@ export function NfcManager({
     setCreateCode("");
     setMessage(null);
     createFormRef.current?.reset();
-  }
-
-  async function rotateTag(tagId: string) {
-    if (pending !== null) {
-      return;
-    }
-
-    setCredential(null);
-    setMessage(null);
-    setPending(`rotate:${tagId}`);
-
-    try {
-      const response = await fetch(`/api/v1/nfc-tags/${tagId}/rotate`, {
-        method: "POST",
-      });
-      const payload = await readApiResponse<IssuedNfcCredential>(response);
-
-      if (payload.error) {
-        setMessage(payload.error.message);
-        return;
-      }
-
-      replaceTag(payload.data.tag);
-      setCredentialKind("rotated");
-      setCredential(payload.data);
-    } catch {
-      setMessage("HydroPOP could not rotate this secure NFC URL.");
-    } finally {
-      setPending(null);
-    }
   }
 
   async function revokeTag(tagId: string) {
@@ -354,7 +348,7 @@ export function NfcManager({
 
       replaceTag(payload.data);
       setMessage(
-        "Tag revoked. Its friendly and secure URLs stopped working without deleting hydration history.",
+        "Tag revoked. Its scan URL stopped working without deleting hydration history.",
       );
     } catch {
       setMessage("HydroPOP could not revoke this NFC tag.");
@@ -370,10 +364,15 @@ export function NfcManager({
       tag,
     );
 
-    if (pending !== null || !availability.available) {
+    if (
+      pending !== null ||
+      updateSubmissionLocksRef.current.has(tag.id) ||
+      !availability.available
+    ) {
       return;
     }
 
+    updateSubmissionLocksRef.current.add(tag.id);
     setCredential(null);
     setMessage(null);
     setPending(`update:${tag.id}`);
@@ -396,12 +395,21 @@ export function NfcManager({
       }
 
       replaceTag(payload.data);
-      setMessage(
-        "Tag saved. The previous friendly URL is invalid, the secure URL is unchanged, and historical hydration events were not modified.",
-      );
+      setSavedTagId(tag.id);
+      setMessage("Tag settings saved.");
+      if (savedTimerRef.current) {
+        clearTimeout(savedTimerRef.current);
+      }
+      savedTimerRef.current = setTimeout(() => {
+        setSavedTagId((current) => (current === tag.id ? null : current));
+        setMessage((current) =>
+          current === "Tag settings saved." ? null : current,
+        );
+      }, 2_000);
     } catch {
       setMessage("HydroPOP could not update this NFC tag.");
     } finally {
+      updateSubmissionLocksRef.current.delete(tag.id);
       setPending(null);
     }
   }
@@ -490,7 +498,14 @@ export function NfcManager({
                 disabled={pending !== null || !createAvailability.available}
                 className="bg-brand-primary hover:bg-brand-primary/90 h-12 rounded-2xl px-5 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60 sm:col-span-2"
               >
-                {pending === "create" ? "Creating…" : "Create NFC tag"}
+                {pending === "create" ? (
+                  <span className="inline-flex items-center gap-2">
+                    <ActionSpinner />
+                    Creating…
+                  </span>
+                ) : (
+                  "Create NFC tag"
+                )}
               </button>
             )}
           </form>
@@ -520,9 +535,7 @@ export function NfcManager({
             Success
           </p>
           <h2 className="text-brand-secondary mt-2 text-2xl font-bold">
-            {credentialKind === "created"
-              ? "NFC tag created"
-              : "Secure URL rotated"}
+            NFC tag created
           </h2>
           <BottleAmounts bottle={credential.tag.bottle} unit={unit} />
 
@@ -531,7 +544,7 @@ export function NfcManager({
               <p className="text-brand-primary text-xs font-bold uppercase">
                 Recommended pilot URL
               </p>
-              <p className="text-brand-secondary mt-2 font-mono text-xs break-all">
+              <p className="text-brand-secondary mt-2 font-mono text-xs break-all select-all">
                 {credential.friendlyUrl}
               </p>
               <div className="mt-3">
@@ -547,29 +560,11 @@ export function NfcManager({
             </p>
           )}
 
-          <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4">
-            <p className="text-xs font-bold text-amber-900 uppercase">
-              Advanced secure URL · displayed once
-            </p>
-            <p className="mt-2 font-mono text-xs break-all text-amber-950">
-              {credential.secureUrl}
-            </p>
-            <p className="mt-3 text-sm font-bold text-amber-950">
-              Copy the secure URL now. It cannot be shown again.
-            </p>
-            <div className="mt-3">
-              <CopyUrlButton
-                label="Copy secure URL"
-                url={credential.secureUrl}
-              />
-            </div>
-          </div>
-
           <h3 className="text-brand-secondary mt-7 text-sm font-bold">
             Write a URL to the physical tag
           </h3>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-emerald-950/70">
-            <li>Copy the recommended friendly or advanced secure URL.</li>
+            <li>Copy the recommended friendly URL.</li>
             <li>Open an NFC-writing app on your phone.</li>
             <li>Choose a URL/URI record.</li>
             <li>Paste the complete HydroPOP URL.</li>
@@ -602,11 +597,16 @@ export function NfcManager({
           </p>
         ) : (
           list.tags.map((tag) => {
+            const draft = editDrafts[tag.id] ?? tagEditDraft(tag);
             const editAvailability = friendlyAvailability(
-              editCodes[tag.id] ?? "",
+              draft.friendlyCode,
               list,
               tag,
             );
+            const hasChanges =
+              draft.bottleId !== tag.bottle.id ||
+              draft.friendlyCode !== (tag.friendlyCode ?? "") ||
+              draft.label !== (tag.label ?? "");
             const friendlyUrl = tag.friendlyCode
               ? buildNfcUrl(siteUrl, tag.friendlyCode)
               : null;
@@ -654,7 +654,7 @@ export function NfcManager({
                     <p className="text-brand-secondary/45 text-xs font-bold uppercase">
                       Recommended pilot URL
                     </p>
-                    <p className="text-brand-primary mt-2 font-mono text-xs break-all">
+                    <p className="text-brand-primary mt-2 font-mono text-xs break-all select-all">
                       {friendlyUrl}
                     </p>
                     {tag.status === "active" ? (
@@ -683,7 +683,16 @@ export function NfcManager({
                         Tag label
                         <input
                           name="label"
-                          defaultValue={tag.label ?? ""}
+                          value={draft.label}
+                          onChange={(event) =>
+                            setEditDrafts((current) => ({
+                              ...current,
+                              [tag.id]: {
+                                ...draft,
+                                label: event.target.value,
+                              },
+                            }))
+                          }
                           maxLength={80}
                           className={inputClassName}
                         />
@@ -692,7 +701,16 @@ export function NfcManager({
                         Assigned bottle
                         <select
                           name="bottleId"
-                          defaultValue={tag.bottle.id}
+                          value={draft.bottleId}
+                          onChange={(event) =>
+                            setEditDrafts((current) => ({
+                              ...current,
+                              [tag.id]: {
+                                ...draft,
+                                bottleId: event.target.value,
+                              },
+                            }))
+                          }
                           className={inputClassName}
                         >
                           {list.assignableBottles.map((bottle) => (
@@ -706,11 +724,14 @@ export function NfcManager({
                         Friendly pilot code
                         <input
                           name="friendlyCode"
-                          value={editCodes[tag.id] ?? ""}
+                          value={draft.friendlyCode}
                           onChange={(event) =>
-                            setEditCodes((current) => ({
+                            setEditDrafts((current) => ({
                               ...current,
-                              [tag.id]: event.target.value,
+                              [tag.id]: {
+                                ...draft,
+                                friendlyCode: event.target.value,
+                              },
                             }))
                           }
                           maxLength={32}
@@ -738,35 +759,41 @@ export function NfcManager({
                       <button
                         type="submit"
                         disabled={
-                          pending !== null || !editAvailability.available
+                          pending !== null ||
+                          !editAvailability.available ||
+                          !hasChanges
                         }
                         className="border-brand-primary/20 text-brand-primary h-11 rounded-xl border bg-white px-4 text-xs font-bold sm:col-span-2"
                       >
-                        {pending === `update:${tag.id}`
-                          ? "Saving…"
-                          : "Save tag"}
+                        {pending === `update:${tag.id}` ? (
+                          <span className="inline-flex items-center gap-2">
+                            <ActionSpinner />
+                            Saving…
+                          </span>
+                        ) : savedTagId === tag.id ? (
+                          "Saved ✓"
+                        ) : hasChanges ? (
+                          "Save tag"
+                        ) : (
+                          "No changes"
+                        )}
                       </button>
                     </form>
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                      <button
-                        type="button"
-                        disabled={pending !== null}
-                        onClick={() => void rotateTag(tag.id)}
-                        className="h-11 rounded-xl border border-amber-200 bg-amber-50 px-4 text-xs font-bold text-amber-900"
-                      >
-                        {pending === `rotate:${tag.id}`
-                          ? "Rotating…"
-                          : "Rotate secure URL"}
-                      </button>
+                    <div className="mt-3">
                       <button
                         type="button"
                         disabled={pending !== null}
                         onClick={() => void revokeTag(tag.id)}
-                        className="h-11 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-bold text-red-700"
+                        className="h-11 w-full rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-bold text-red-700 sm:w-auto"
                       >
-                        {pending === `revoke:${tag.id}`
-                          ? "Revoking…"
-                          : "Revoke tag"}
+                        {pending === `revoke:${tag.id}` ? (
+                          <span className="inline-flex items-center gap-2">
+                            <ActionSpinner />
+                            Revoking…
+                          </span>
+                        ) : (
+                          "Revoke tag"
+                        )}
                       </button>
                     </div>
                   </>
@@ -780,9 +807,9 @@ export function NfcManager({
       <section className="bg-brand-secondary rounded-[1.75rem] p-5 text-white sm:p-6">
         <h2 className="text-lg font-bold">What one NFC confirmation means</h2>
         <p className="mt-2 text-sm leading-6 text-white/65">
-          HydroPOP records your normal fill amount. Partial fills are not
-          detected automatically and must be corrected with manual intake,
-          adjustment, or reversal in the app.
+          Choose a full bottle to record the normal fill amount, or a half
+          bottle to record half that amount. Both stay reversible in your
+          hydration history.
         </p>
       </section>
     </div>

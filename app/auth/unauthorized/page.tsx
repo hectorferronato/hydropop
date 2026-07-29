@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FormSubmitButton } from "@/components/form-submit-button";
 import { Brand } from "@/components/brand";
 import { DropIcon } from "@/components/icons";
 import {
@@ -51,12 +52,12 @@ export default async function UnauthorizedPage({
             Try another email
           </Link>
           <form action="/auth/logout" method="post">
-            <button
-              type="submit"
+            <FormSubmitButton
+              pendingLabel="Clearing…"
               className="bg-brand-primary hover:bg-brand-primary/90 focus-visible:outline-brand-primary h-12 w-full rounded-2xl px-5 text-sm font-bold text-white transition focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Clear session
-            </button>
+            </FormSubmitButton>
           </form>
         </div>
       </section>

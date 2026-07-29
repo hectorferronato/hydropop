@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
 
+import { ActionSpinner } from "./action-feedback";
 import {
   CalendarIcon,
   DeviceIcon,
@@ -12,6 +13,7 @@ import {
   SettingsIcon,
   type IconProps,
 } from "./icons";
+import { useNavigationFeedback } from "./navigation-feedback";
 
 type NavigationItem = {
   href: Route;
@@ -32,11 +34,13 @@ function isActivePath(pathname: string, href: Route): boolean {
 
 export function DesktopNavigation() {
   const pathname = usePathname();
+  const { pendingHref } = useNavigationFeedback();
 
   return (
     <nav aria-label="Primary" className="mt-10 flex flex-col gap-2">
       {navigationItems.map((item) => {
         const active = isActivePath(pathname, item.href);
+        const pending = pendingHref === item.href;
         const Icon = item.icon;
 
         return (
@@ -44,13 +48,18 @@ export function DesktopNavigation() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
+            aria-label={pending ? `${item.label}, loading` : item.label}
             className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
               active
                 ? "bg-brand-primary text-white shadow-lg shadow-[rgba(62,41,255,0.16)]"
                 : "text-brand-secondary/60 hover:text-brand-secondary hover:bg-white"
             }`}
           >
-            <Icon className="size-5" />
+            {pending ? (
+              <ActionSpinner className="size-5" />
+            ) : (
+              <Icon className="size-5" />
+            )}
             {item.label}
           </Link>
         );
@@ -61,6 +70,7 @@ export function DesktopNavigation() {
 
 export function MobileNavigation() {
   const pathname = usePathname();
+  const { pendingHref } = useNavigationFeedback();
 
   return (
     <nav
@@ -69,6 +79,7 @@ export function MobileNavigation() {
     >
       {navigationItems.map((item) => {
         const active = isActivePath(pathname, item.href);
+        const pending = pendingHref === item.href;
         const Icon = item.icon;
 
         return (
@@ -76,13 +87,18 @@ export function MobileNavigation() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
+            aria-label={pending ? `${item.label}, loading` : item.label}
             className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[0.65rem] font-semibold transition ${
               active
                 ? "bg-brand-primary/10 text-brand-primary"
                 : "text-brand-secondary/45"
             }`}
           >
-            <Icon className="size-5" />
+            {pending ? (
+              <ActionSpinner className="size-5" />
+            ) : (
+              <Icon className="size-5" />
+            )}
             {item.label}
           </Link>
         );

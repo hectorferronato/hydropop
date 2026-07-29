@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { PageHeader } from "@/components/page-header";
+import { FormSubmitButton } from "@/components/form-submit-button";
 import { toSettingsSummary } from "@/lib/application/settings/settings-summary";
 import { requireAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { getOnboardingSnapshot } from "@/lib/infrastructure/supabase/onboarding";
@@ -272,12 +273,12 @@ export default async function SettingsPage({
                         configure another primary bottle.
                       </span>
                     </label>
-                    <button
-                      type="submit"
+                    <FormSubmitButton
+                      pendingLabel="Archiving…"
                       className="mt-4 h-11 rounded-2xl border border-red-200 bg-red-50 px-4 text-sm font-bold text-red-700 transition hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
                     >
                       Archive bottle
-                    </button>
+                    </FormSubmitButton>
                   </form>
                 </div>
               </>

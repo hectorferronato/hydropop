@@ -237,7 +237,7 @@ describe("NFC management and scan contracts", () => {
     expect(scanPage).not.toContain("processHydrationEvent");
     expect(scanPage).not.toContain("completeNfcBottle");
     expect(scanPage).toMatch(
-      /Loading or refreshing this page\s+never records/u,
+      /Loading, refreshing, viewing\s+Today, or cancelling never records/u,
     );
   });
 
@@ -251,7 +251,9 @@ describe("NFC management and scan contracts", () => {
   it("requires an explicit POST confirmation and never auto-submits", () => {
     expect(confirmationClient).toContain('fetch("/api/v1/nfc-tags/complete"');
     expect(confirmationClient).toContain('method: "POST"');
-    expect(confirmationClient).toContain("onClick={() => void submit(false)}");
+    expect(confirmationClient).toContain(
+      'onClick={() => void submit("full", false)}',
+    );
     expect(confirmationClient).toContain("crypto.randomUUID()");
     expect(confirmationClient).not.toMatch(/useEffect\s*\(/u);
   });

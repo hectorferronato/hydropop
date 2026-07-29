@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { ActionSpinner } from "@/components/action-feedback";
 import { getSetupFormRevision } from "@/lib/application/onboarding/setup-form-values";
 import type { SetupField, SetupFormValues } from "@/lib/contracts/setup";
 import { convertDisplayVolume, type VolumeUnit } from "@/lib/units/volume";
@@ -59,7 +60,14 @@ function SubmitButton() {
       disabled={pending}
       className="bg-brand-primary hover:bg-brand-primary/90 focus-visible:outline-brand-primary h-12 flex-1 rounded-2xl px-5 text-sm font-bold text-white shadow-lg shadow-[rgba(62,41,255,0.18)] transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60"
     >
-      {pending ? "Saving…" : "Save setup"}
+      {pending ? (
+        <span className="inline-flex items-center justify-center gap-2">
+          <ActionSpinner />
+          Saving…
+        </span>
+      ) : (
+        "Save setup"
+      )}
     </button>
   );
 }

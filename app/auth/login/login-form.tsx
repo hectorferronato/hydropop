@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { login } from "@/app/auth/login/actions";
+import { ActionSpinner } from "@/components/action-feedback";
 
 import { initialLoginState } from "./state";
 
@@ -14,9 +15,16 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="bg-brand-primary hover:bg-brand-primary/90 focus-visible:outline-brand-primary mt-2 flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-bold text-white shadow-lg shadow-[rgba(62,41,255,0.2)] transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60"
+      className="login-submit bg-brand-primary hover:bg-brand-primary/90 focus-visible:outline-brand-primary mt-2 flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-bold text-white shadow-lg shadow-[rgba(62,41,255,0.2)] transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60"
     >
-      {pending ? "Signing in…" : "Sign in"}
+      {pending ? (
+        <span className="flex items-center gap-2">
+          <ActionSpinner />
+          Signing in…
+        </span>
+      ) : (
+        "Sign in"
+      )}
     </button>
   );
 }
@@ -25,7 +33,7 @@ export function LoginForm({ destination }: { destination: string }) {
   const [state, formAction] = useActionState(login, initialLoginState);
 
   return (
-    <form action={formAction} className="mt-8 space-y-5">
+    <form action={formAction} className="login-form mt-8 space-y-5">
       <input type="hidden" name="next" value={destination} />
 
       <div>

@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { ActionSpinner } from "@/components/action-feedback";
 import type { ApiResponse } from "@/lib/contracts/api-response";
 import type { NfcCompletionResult } from "@/lib/contracts/nfc";
 import { formatDisplayVolume, type VolumeUnit } from "@/lib/units/volume";
 
+type NfcCompletionAction = "full" | "half";
+
 type PendingConfirmation = {
+  action: NfcCompletionAction;
   idempotencyKey: string;
   occurredAt: string;
 };
@@ -42,25 +46,71 @@ export function NfcConfirmation({
   unit: VolumeUnit;
 }) {
   const router = useRouter();
-  const [pending, setPending] = useState(false);
+  const submissionLockRef = useRef(false);
+  const [pendingAction, setPendingAction] = useState<
+    NfcCompletionAction | "cancel" | "today" | null
+  >(null);
   const [request, setRequest] = useState<PendingConfirmation | null>(null);
   const [recentWarning, setRecentWarning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [result, setResult] = useState<NfcCompletionResult | null>(null);
+  const halfFillMl = Math.max(1, Math.round(normalFillMl / 2));
+  const isPending = pendingAction !== null;
 
-  async function submit(confirmRecent: boolean) {
-    const currentRequest = request ?? {
-      idempotencyKey: crypto.randomUUID(),
-      occurredAt: new Date().toISOString(),
-    };
+  function viewToday() {
+    if (isPending) {
+      return;
+    }
+
+    setPendingAction("today");
+    router.push("/today");
+    router.refresh();
+  }
+
+  function cancel() {
+    if (isPending) {
+      return;
+    }
+
+    setPendingAction("cancel");
+    const referrer = document.referrer;
+
+    if (
+      window.history.length > 1 &&
+      referrer &&
+      new URL(referrer).origin === window.location.origin
+    ) {
+      router.back();
+      return;
+    }
+
+    router.push("/today");
+    router.refresh();
+  }
+
+  async function submit(action: NfcCompletionAction, confirmRecent: boolean) {
+    if (submissionLockRef.current) {
+      return;
+    }
+
+    submissionLockRef.current = true;
+    const currentRequest =
+      request?.action === action
+        ? request
+        : {
+            action,
+            idempotencyKey: crypto.randomUUID(),
+            occurredAt: new Date().toISOString(),
+          };
 
     setRequest(currentRequest);
-    setPending(true);
+    setPendingAction(action);
     setMessage(null);
 
     try {
       const response = await fetch("/api/v1/nfc-tags/complete", {
         body: JSON.stringify({
+          action,
           confirmRecent,
           idempotencyKey: currentRequest.idempotencyKey,
           occurredAt: currentRequest.occurredAt,
@@ -91,7 +141,8 @@ export function NfcConfirmation({
         "HydroPOP could not reach the server. Try again safely; the same request key will be reused.",
       );
     } finally {
-      setPending(false);
+      submissionLockRef.current = false;
+      setPendingAction(null);
     }
   }
 
@@ -102,13 +153,15 @@ export function NfcConfirmation({
         className="mt-7 rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5 text-center"
       >
         <p className="text-xs font-bold tracking-[0.14em] text-emerald-700 uppercase">
-          Bottle recorded
+          {result.action === "half"
+            ? "Half bottle recorded"
+            : "Bottle recorded"}
         </p>
         <p className="text-brand-secondary mt-3 text-3xl font-bold">
           +{formatDisplayVolume(result.creditedAmountMl, unit)} {unit}
         </p>
         <div className="mt-5 grid grid-cols-2 gap-3 text-left">
-          <div className="rounded-2xl bg-white p-3">
+          <div className="min-w-0 rounded-2xl bg-white p-3">
             <p className="text-brand-secondary/40 text-[0.65rem] font-bold uppercase">
               Current total
             </p>
@@ -122,7 +175,7 @@ export function NfcConfirmation({
                 : ""}
             </p>
           </div>
-          <div className="rounded-2xl bg-white p-3">
+          <div className="min-w-0 rounded-2xl bg-white p-3">
             <p className="text-brand-secondary/40 text-[0.65rem] font-bold uppercase">
               Bottles today
             </p>
@@ -140,13 +193,18 @@ export function NfcConfirmation({
         </p>
         <button
           type="button"
-          onClick={() => {
-            router.push("/today");
-            router.refresh();
-          }}
-          className="bg-brand-primary mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-bold text-white"
+          disabled={isPending}
+          onClick={viewToday}
+          className="bg-brand-primary mt-5 inline-flex h-14 w-full items-center justify-center rounded-2xl px-5 text-sm font-bold text-white"
         >
-          View Today
+          {pendingAction === "today" ? (
+            <span className="inline-flex items-center gap-2">
+              <ActionSpinner />
+              Opening Today…
+            </span>
+          ) : (
+            "View Today"
+          )}
         </button>
       </section>
     );
@@ -155,7 +213,7 @@ export function NfcConfirmation({
   return (
     <section className="mt-7">
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="bg-brand-bg rounded-2xl p-3">
+        <div className="bg-brand-bg min-w-0 rounded-2xl p-3">
           <p className="text-brand-secondary/40 text-[0.62rem] font-bold uppercase">
             Today
           </p>
@@ -163,7 +221,7 @@ export function NfcConfirmation({
             {formatDisplayVolume(initialConsumedMl, unit)} {unit}
           </p>
         </div>
-        <div className="bg-brand-bg rounded-2xl p-3">
+        <div className="bg-brand-bg min-w-0 rounded-2xl p-3">
           <p className="text-brand-secondary/40 text-[0.62rem] font-bold uppercase">
             Goal
           </p>
@@ -173,7 +231,7 @@ export function NfcConfirmation({
               : `${formatDisplayVolume(initialGoalMl, unit)} ${unit}`}
           </p>
         </div>
-        <div className="bg-brand-bg rounded-2xl p-3">
+        <div className="bg-brand-bg min-w-0 rounded-2xl p-3">
           <p className="text-brand-secondary/40 text-[0.62rem] font-bold uppercase">
             Bottles
           </p>
@@ -189,31 +247,60 @@ export function NfcConfirmation({
             You recorded this bottle less than a minute ago.
           </p>
           <p className="mt-1 text-xs leading-5 text-amber-900/65">
-            Record another one anyway?
+            Record another full bottle anyway?
           </p>
           <button
             type="button"
-            disabled={pending}
-            onClick={() => void submit(true)}
-            className="mt-4 h-12 w-full rounded-2xl bg-amber-700 px-5 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60"
+            disabled={isPending}
+            onClick={() => void submit("full", true)}
+            className="mt-4 h-14 w-full rounded-2xl bg-amber-700 px-5 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60"
           >
-            {pending ? "Recording…" : "Yes, record another bottle"}
+            {pendingAction === "full" ? (
+              <span className="inline-flex items-center gap-2">
+                <ActionSpinner />
+                Recording…
+              </span>
+            ) : (
+              "Yes, record another bottle"
+            )}
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => void submit(false)}
-          className="bg-brand-primary hover:bg-brand-primary/90 mt-5 min-h-16 w-full rounded-2xl px-6 py-4 text-lg font-bold text-white shadow-lg shadow-[rgba(62,41,255,0.2)] disabled:cursor-wait disabled:opacity-60"
-        >
-          {pending
-            ? "Recording…"
-            : `Record one bottle · ${formatDisplayVolume(
-                normalFillMl,
-                unit,
-              )} ${unit}`}
-        </button>
+        <div className="mt-5 grid gap-3">
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => void submit("full", false)}
+            className="bg-brand-primary hover:bg-brand-primary/90 min-h-16 w-full rounded-2xl px-6 py-4 text-lg font-bold text-white shadow-lg shadow-[rgba(62,41,255,0.2)] disabled:cursor-wait disabled:opacity-60"
+          >
+            {pendingAction === "full" ? (
+              <span className="inline-flex items-center gap-2">
+                <ActionSpinner />
+                Recording…
+              </span>
+            ) : (
+              "Record one bottle"
+            )}
+          </button>
+          <p className="text-brand-secondary/45 -mt-1 text-center text-xs">
+            Full · {formatDisplayVolume(normalFillMl, unit)} {unit}
+          </p>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => void submit("half", false)}
+            className="border-brand-primary/20 text-brand-primary min-h-14 w-full rounded-2xl border bg-white px-5 py-3 text-sm font-bold disabled:cursor-wait disabled:opacity-60"
+          >
+            {pendingAction === "half" ? (
+              <span className="inline-flex items-center gap-2">
+                <ActionSpinner />
+                Recording…
+              </span>
+            ) : (
+              `Record half — ${formatDisplayVolume(halfFillMl, unit)} ${unit}`
+            )}
+          </button>
+        </div>
       )}
 
       {message ? (
@@ -224,6 +311,30 @@ export function NfcConfirmation({
           {message}
         </p>
       ) : null}
+
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={viewToday}
+        className="border-brand-primary/20 text-brand-primary mt-5 h-14 w-full rounded-2xl border bg-white px-5 text-sm font-bold"
+      >
+        {pendingAction === "today" ? (
+          <span className="inline-flex items-center gap-2">
+            <ActionSpinner />
+            Opening Today…
+          </span>
+        ) : (
+          "View Today"
+        )}
+      </button>
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={cancel}
+        className="text-brand-secondary/55 mt-2 min-h-12 w-full rounded-2xl px-5 text-sm font-semibold"
+      >
+        {pendingAction === "cancel" ? "Closing…" : "Cancel"}
+      </button>
 
       <p className="text-brand-secondary/40 mt-3 text-center text-xs">
         Next checkpoint: {formatCheckpoint(initialNextCheckpointAt, timezone)}

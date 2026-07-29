@@ -21,12 +21,15 @@
 }
 
 html {
-  min-width: 320px;
+  width: 100%;
+  overflow-x: clip;
   background: var(--background);
 }
 
 body {
+  width: 100%;
   min-height: 100vh;
+  overflow-x: clip;
   margin: 0;
   background:
     radial-gradient(
@@ -48,6 +51,79 @@ input {
 button,
 a {
   -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 120ms ease,
+    opacity 160ms ease,
+    filter 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+:where(button, a, [role="button"]):focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+:where(button, a, [role="button"]):not(:disabled):active {
+  transform: scale(0.975);
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a[data-navigation-pending="true"] {
+  opacity: 0.72;
+}
+
+@media (hover: hover) {
+  :where(button, a, [role="button"]):not(:disabled):hover {
+    filter: brightness(0.98);
+  }
+}
+
+@media (max-height: 600px) {
+  .login-main {
+    align-items: flex-start;
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .login-panel {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .login-copy,
+  .login-form {
+    margin-top: 1rem;
+  }
+
+  .login-form {
+    --tw-space-y-reverse: 0;
+  }
+
+  .login-form > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem;
+  }
+}
+
+@media (min-width: 600px) and (max-height: 600px) {
+  .login-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .login-form > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .login-submit,
+  .login-form > [role="alert"] {
+    grid-column: 1 / -1;
+  }
 }
 
 ::selection {

@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { EventTimeline } from "@/components/hydration/event-timeline";
 import { PageHeader } from "@/components/page-header";
-import { RefreshOnFocus } from "@/components/refresh-on-focus";
+import { TodayRefreshController } from "@/components/today-refresh-controller";
 import { getTodayDashboard } from "@/lib/application/hydration/get-today-dashboard";
 import { requireAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { createClient } from "@/lib/infrastructure/supabase/server";
@@ -54,7 +54,7 @@ export default async function TodayPage() {
 
   return (
     <>
-      <RefreshOnFocus />
+      <TodayRefreshController />
       <PageHeader
         eyebrow={dashboard.date}
         title={

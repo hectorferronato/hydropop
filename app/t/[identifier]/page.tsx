@@ -23,8 +23,8 @@ export const metadata: Metadata = {
 
 function UnavailableNfcTag() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-5 py-10">
-      <section className="w-full max-w-lg rounded-[2rem] border border-white/80 bg-white/90 p-7 text-center shadow-[0_30px_100px_rgba(62,41,255,0.14)] sm:p-10">
+    <main className="flex min-h-dvh w-full max-w-full items-center justify-center overflow-x-clip px-5 py-10">
+      <section className="w-full max-w-lg min-w-0 rounded-[2rem] border border-white/80 bg-white/90 p-7 text-center shadow-[0_30px_100px_rgba(62,41,255,0.14)] sm:p-10">
         <div className="bg-brand-secondary/8 text-brand-secondary/45 mx-auto flex size-16 items-center justify-center rounded-3xl">
           <DropIcon className="size-8" />
         </div>
@@ -82,8 +82,8 @@ export default async function NfcIdentifierPage({
     .join(" · ");
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 sm:py-10">
-      <section className="mx-auto w-full max-w-lg rounded-[2rem] border border-white/80 bg-white/95 p-5 shadow-[0_30px_100px_rgba(62,41,255,0.14)] backdrop-blur sm:p-8">
+    <main className="min-h-dvh w-full max-w-full overflow-x-clip px-3 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-10">
+      <section className="mx-auto w-full max-w-lg min-w-0 rounded-[2rem] border border-white/80 bg-white/95 p-5 shadow-[0_30px_100px_rgba(62,41,255,0.14)] backdrop-blur sm:p-8">
         <div className="flex items-center justify-between gap-4">
           <Brand />
           <span className="bg-brand-primary/8 text-brand-primary rounded-full px-3 py-1 text-[0.65rem] font-bold tracking-[0.12em] uppercase">
@@ -145,17 +145,11 @@ export default async function NfcIdentifierPage({
 
         <div className="border-brand-secondary/5 mt-6 border-t pt-5">
           <p className="text-brand-secondary/45 text-xs leading-5">
-            This records your normal fill amount of{" "}
-            {formatDisplayVolume(resolution.normalFillMl, unit)} {unit}. Partial
-            fills must be corrected in the app. Loading or refreshing this page
-            never records hydration.
+            A full confirmation records{" "}
+            {formatDisplayVolume(resolution.normalFillMl, unit)} {unit}; a half
+            confirmation records half that amount. Loading, refreshing, viewing
+            Today, or cancelling never records hydration.
           </p>
-          <Link
-            href="/today"
-            className="text-brand-primary mt-4 inline-block text-sm font-bold"
-          >
-            View Today
-          </Link>
         </div>
       </section>
     </main>

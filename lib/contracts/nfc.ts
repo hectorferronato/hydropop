@@ -43,6 +43,7 @@ export const updateNfcTagInputSchema = z
 
 export const nfcCompletionInputSchema = z
   .object({
+    action: z.enum(["full", "half"]).optional().default("full"),
     confirmRecent: z.boolean().optional().default(false),
     idempotencyKey: z.string().trim().min(8).max(200),
     occurredAt: z.iso.datetime({ offset: true }),
@@ -88,10 +89,11 @@ export type NfcTagList = {
 };
 
 export type NfcCompletionResult = {
+  action: "full" | "half";
   coaching: import("@/lib/domain/coaching/coaching").HydrationCoaching;
   creditedAmountMl: number;
   daySummary: import("@/lib/domain/hydration/daily-summary").HydrationDaySummary;
   duplicate: boolean;
   event: import("@/lib/domain/hydration/event-types").HydrationEvent;
-  lastConfirmedAt: string;
+  lastConfirmedAt: string | null;
 };

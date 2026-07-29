@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
 
+import { ActionSpinner } from "@/components/action-feedback";
+
 import type { SettingsActionState } from "./state";
 
 export const settingsInputClassName =
@@ -49,7 +51,14 @@ export function SettingsFormActions() {
         disabled={pending}
         className="bg-brand-primary hover:bg-brand-primary/90 focus-visible:outline-brand-primary h-12 flex-1 rounded-2xl px-5 text-sm font-bold text-white shadow-lg shadow-[rgba(62,41,255,0.18)] transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Save changes"}
+        {pending ? (
+          <span className="flex items-center justify-center gap-2">
+            <ActionSpinner />
+            Saving…
+          </span>
+        ) : (
+          "Save changes"
+        )}
       </button>
     </div>
   );

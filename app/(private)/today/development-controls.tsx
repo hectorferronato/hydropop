@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ActionSpinner } from "@/components/action-feedback";
 import type { ApiResponse } from "@/lib/contracts/api-response";
 import type { ProcessHydrationEventResult } from "@/lib/contracts/hydration-events";
 import type {
@@ -88,6 +89,7 @@ export function DevelopmentControls({
           ? "That action was already processed."
           : "Hydration event recorded.",
       );
+      window.dispatchEvent(new Event("hydropop:hydration-mutated"));
       router.refresh();
     } catch {
       setMessage("The development control could not reach HydroPOP.");
@@ -127,6 +129,7 @@ export function DevelopmentControls({
       }
 
       setMessage("The event was reversed without changing its audit record.");
+      window.dispatchEvent(new Event("hydropop:hydration-mutated"));
       router.refresh();
     } catch {
       setMessage("The development control could not reach HydroPOP.");
@@ -158,7 +161,14 @@ export function DevelopmentControls({
                 : "rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-xs font-bold text-amber-900 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50"
             }
           >
-            {pendingAction === action.label ? "Saving…" : action.label}
+            {pendingAction === action.label ? (
+              <span className="inline-flex items-center gap-2">
+                <ActionSpinner />
+                Saving…
+              </span>
+            ) : (
+              action.label
+            )}
           </button>
         ))}
         <button
@@ -167,9 +177,14 @@ export function DevelopmentControls({
           onClick={() => void reverseLatest()}
           className="rounded-xl border border-red-200 bg-white px-3 py-2.5 text-xs font-bold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {pendingAction === "Reverse latest event"
-            ? "Reversing…"
-            : "Reverse latest event"}
+          {pendingAction === "Reverse latest event" ? (
+            <span className="inline-flex items-center gap-2">
+              <ActionSpinner />
+              Reversing…
+            </span>
+          ) : (
+            "Reverse latest event"
+          )}
         </button>
       </div>
       {message ? (

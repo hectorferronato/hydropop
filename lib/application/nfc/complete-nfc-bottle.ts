@@ -15,6 +15,10 @@ import type { NfcScanResolution } from "./resolve-nfc-scan";
 
 export const recentCompletionWindowMs = 60_000;
 
+export function calculateHalfNfcVolumeMl(normalFillMl: number): number {
+  return Math.max(1, Math.round(normalFillMl / 2));
+}
+
 export function hasRecentEffectiveCompletion({
   bottleId,
   idempotencyKey,
@@ -74,13 +78,17 @@ export async function completeNfcBottle({
   }
 
   const snapshot = await getHydrationSnapshot();
+  const isFullCompletion = parsed.data.action === "full";
+  const expectedEventType = isFullCompletion
+    ? "bottle_completed"
+    : "manual_intake";
   const knownDuplicate = snapshot.events.find(
     (event) => event.idempotencyKey === parsed.data.idempotencyKey,
   );
 
   if (
     knownDuplicate &&
-    (knownDuplicate.eventType !== "bottle_completed" ||
+    (knownDuplicate.eventType !== expectedEventType ||
       knownDuplicate.source !== "nfc" ||
       knownDuplicate.bottleId !== resolution.bottle.id)
   ) {
@@ -89,6 +97,7 @@ export async function completeNfcBottle({
 
   if (
     !knownDuplicate &&
+    isFullCompletion &&
     !parsed.data.confirmRecent &&
     hasRecentEffectiveCompletion({
       bottleId: resolution.bottle.id,
@@ -105,24 +114,35 @@ export async function completeNfcBottle({
     getUpdatedDashboard,
     input: {
       bottleId: resolution.bottle.id,
-      eventType: "bottle_completed",
+      eventType: expectedEventType,
       idempotencyKey: parsed.data.idempotencyKey,
       occurredAt: parsed.data.occurredAt,
       source: "nfc",
+      ...(isFullCompletion
+        ? {}
+        : { volumeMl: calculateHalfNfcVolumeMl(resolution.normalFillMl) }),
     },
     now,
   });
+
+  if (
+    result.event.eventType !== expectedEventType ||
+    result.event.source !== "nfc" ||
+    result.event.bottleId !== resolution.bottle.id
+  ) {
+    throw new NfcApplicationError("DUPLICATE_EVENT");
+  }
 
   if (result.event.volumeMl === null || result.event.volumeMl <= 0) {
     throw new NfcApplicationError("INTERNAL_ERROR");
   }
 
-  const lastConfirmedAt = await markConfirmed(
-    resolution.tag.id,
-    result.event.id,
-  );
+  const lastConfirmedAt = isFullCompletion
+    ? await markConfirmed(resolution.tag.id, result.event.id)
+    : resolution.tag.lastConfirmedAt;
 
   return {
+    action: parsed.data.action,
     coaching: result.coaching,
     creditedAmountMl: result.event.volumeMl,
     daySummary: result.daySummary,

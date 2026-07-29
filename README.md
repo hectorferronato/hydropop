@@ -145,18 +145,20 @@ returned to clients.
 ## NFC behavior-validation prototype
 
 The Device area provisions and manages NFC tags for validating the future
-HydroPOP Charm gesture. The user finishes their normal bottle amount, scans the
-tag, reviews a mobile confirmation page, and explicitly presses **Record one
-bottle**. Only that authenticated POST creates a `bottle_completed` event with
-source `nfc`. Opening, refreshing, navigating back to, or forwarding to the NFC
-URL never records hydration and never changes tag state.
+HydroPOP Charm gesture. The user scans the tag, reviews a mobile confirmation
+page, and explicitly chooses **Record one bottle** or **Record half**. Only an
+authenticated confirmation POST records hydration. Opening, refreshing,
+navigating back to, viewing Today, or cancelling never records hydration and
+never changes tag state.
 
 Every tag retains its secure identifier: 32 cryptographically random bytes
 encoded as a 43-character base64url string. Its URL is a secret locator.
 HydroPOP validates its format, stores only its lowercase SHA-256 digest, and
 resolves it through an exact unique-index lookup scoped to the authenticated
-owner. The raw token is returned only by create and rotate responses and cannot
-be recovered from the database afterward.
+owner. The raw token is returned only by create and rotate API responses and
+cannot be recovered from the database afterward. The pilot interface
+intentionally hides that advanced URL and shows only the friendly URL; existing
+secure URLs and the rotation API remain backward compatible.
 
 For the friends-and-family pilot, a tag may also have a memorable friendly code
 such as `bea-kitchen`. Friendly codes are normalized to lowercase and are not
@@ -172,29 +174,36 @@ Tag management supports:
 
 - creation for the authenticated user’s active primary bottle;
 - optional labels, friendly pilot codes, and bottle reassignment;
-- rotation, which immediately invalidates the prior URL;
 - revocation without deleting the tag or hydration history;
 - last confirmed-use display through `last_scanned_at`.
 
 For this MVP, `last_scanned_at` means the timestamp of the latest successful
-confirmed NFC bottle completion. A read-only scan does not update it.
+confirmed full-bottle NFC completion. A read-only scan, half intake, View Today,
+or Cancel does not update it.
 
-The NFC completion adapter accepts only the raw token, occurrence timestamp,
-idempotency key, and an explicit rapid-repeat confirmation flag. It derives the
-user and bottle on the server and calls the same atomic hydration processor used
-by the normal event API. The processor derives and snapshots
-`typical_fill_ml ?? capacity_ml`; the NFC adapter never accepts volume or bottle
-capacity from the browser. Reusing an idempotency key returns the original
-event. A second effective completion for the same bottle within 60 seconds
-shows a warning and requires another deliberate confirmation.
+The NFC completion adapter accepts only the identifier, semantic `full` or
+`half` action, occurrence timestamp, idempotency key, and an explicit
+rapid-repeat confirmation flag. It derives the user and bottle on the server
+and calls the same atomic hydration processor used by the normal event API. A
+full action creates `bottle_completed`; the processor derives and snapshots
+`typical_fill_ml ?? capacity_ml`. A half action reuses `manual_intake` and the
+server calculates `round((typical_fill_ml ?? capacity_ml) / 2)` in integer
+milliliters. The browser never supplies the user, bottle, or volume. Half intake
+adds hydration without increasing the completed-bottle count and remains
+reversible through immutable history. Reusing an idempotency key returns the
+original event. A second effective full completion for the same bottle within
+60 seconds shows a warning and requires another deliberate confirmation.
 
-Partial fills are not detected automatically. Correct mistakes with manual
-intake, an adjustment, or a reversal.
+While Today is visible and online, a small pilot controller checks for
+cross-device updates every five seconds. It pauses while hidden or offline,
+refreshes promptly after focus, visibility return, or local hydration changes,
+and prevents overlapping requests. This temporary polling can later be replaced
+by realtime subscriptions or device synchronization.
 
 ### Writing and testing a physical NFC tag
 
-1. Create or rotate a tag under `/device/nfc`.
-2. Copy the complete private NFC URL while it is displayed.
+1. Create a tag with a friendly code under `/device/nfc`.
+2. Copy the displayed friendly NFC URL.
 3. Open an NFC-writing app such as NFC Tools or an equivalent.
 4. Choose to write a URL/URI record.
 5. Paste the HydroPOP URL and write it to the tag.
@@ -219,6 +228,7 @@ physical tags:
 The future transport mapping is intentionally simple:
 
 - NFC confirmation → `bottle_completed`
+- NFC half confirmation → `manual_intake` with a server-calculated volume
 - Future charm short press → `bottle_completed`
 
 The hydration engine and immutable event remain identical; only the client
