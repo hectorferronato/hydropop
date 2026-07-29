@@ -28,8 +28,9 @@ navigation, database migrations with row-level security, and test tooling.
 
    - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key.
-   - `NEXT_PUBLIC_SITE_URL`: `http://localhost:3000` locally and the canonical
-     HTTPS URL in production.
+   - `NEXT_PUBLIC_SITE_URL`: `http://localhost:3000` locally and
+     `https://hydropop-lake.vercel.app` in production. Do not add a trailing
+     slash.
    - `ALLOWED_EMAILS`: comma-separated email addresses permitted to sign in.
 
 4. In the Supabase dashboard:
@@ -37,8 +38,8 @@ navigation, database migrations with row-level security, and test tooling.
    - Keep email/password authentication enabled.
    - Create each allowed user manually under Authentication → Users. The app has
      no public sign-up flow and does not use a service-role key.
-   - Set the Auth site URL and allowed redirect URLs to match
-     `NEXT_PUBLIC_SITE_URL`.
+   - Set the Auth site URL and allowed redirect URLs to the canonical
+     `https://hydropop-lake.vercel.app` deployment.
 
 5. Start the development server:
 
@@ -90,7 +91,7 @@ Authentication uses Supabase's SSR package and cookie-backed sessions. The root
 routes. The private App Router layout independently verifies the JWT, fetches a
 fresh user record, and applies the server-only email allowlist before rendering.
 Login accepts email and password only. Safe internal destinations—including
-public NFC links under `/t/[token]`—are preserved through login and first-time
+public NFC links under `/t/[identifier]`—are preserved through login and first-time
 setup without allowing external redirects.
 
 The mobile-first setup wizard writes profile preferences, the current
@@ -150,19 +151,27 @@ bottle**. Only that authenticated POST creates a `bottle_completed` event with
 source `nfc`. Opening, refreshing, navigating back to, or forwarding to the NFC
 URL never records hydration and never changes tag state.
 
-NFC tokens contain 32 cryptographically random bytes encoded as a 43-character
-base64url string. The URL is a secret locator. HydroPOP validates its format,
-stores only its lowercase SHA-256 digest, and resolves it through an exact
-unique-index lookup scoped to the authenticated owner. The raw token is
-returned only by create and rotate responses and cannot be recovered from the
-database afterward. Authentication, the server email allowlist, RLS, tag
-ownership, bottle ownership, active status, and archival status are still
-checked even when someone possesses the URL.
+Every tag retains its secure identifier: 32 cryptographically random bytes
+encoded as a 43-character base64url string. Its URL is a secret locator.
+HydroPOP validates its format, stores only its lowercase SHA-256 digest, and
+resolves it through an exact unique-index lookup scoped to the authenticated
+owner. The raw token is returned only by create and rotate responses and cannot
+be recovered from the database afterward.
+
+For the friends-and-family pilot, a tag may also have a memorable friendly code
+such as `bea-kitchen`. Friendly codes are normalized to lowercase and are not
+secret credentials. They resolve only after authentication and only among the
+signed-in owner’s active tags, so different users may independently use the
+same code. Codes are permanently reserved per user, including after a code
+change or revocation. This prevents an older physical tag URL from becoming
+valid again accidentally. Changing a friendly code invalidates its previous
+friendly URL immediately without rotating the secure identifier. Rotating the
+secure identifier does not change the friendly URL. Revocation disables both.
 
 Tag management supports:
 
 - creation for the authenticated user’s active primary bottle;
-- optional labels and bottle reassignment;
+- optional labels, friendly pilot codes, and bottle reassignment;
 - rotation, which immediately invalidates the prior URL;
 - revocation without deleting the tag or hydration history;
 - last confirmed-use display through `last_scanned_at`.
@@ -193,9 +202,19 @@ intake, an adjustment, or a reversal.
 7. Do not lock the physical tag during early validation.
 
 Local URLs use `NEXT_PUBLIC_SITE_URL=http://localhost:3000`, producing
-`http://localhost:3000/t/{randomToken}`. Production must set
-`NEXT_PUBLIC_SITE_URL` to the canonical HTTPS origin, such as
-`https://app.hydropop.com`, before provisioning production tags.
+`http://localhost:3000/t/{identifier}`. Production must set
+`NEXT_PUBLIC_SITE_URL=https://hydropop-lake.vercel.app`, producing
+`https://hydropop-lake.vercel.app/t/{identifier}`. URL construction uses one
+validated origin utility, removes a trailing slash, has no fallback Vercel
+domain, and fails during Next startup/build if the value is missing or invalid.
+
+Verify the same canonical origin manually in both places before provisioning
+physical tags:
+
+- Vercel Production environment:
+  `NEXT_PUBLIC_SITE_URL=https://hydropop-lake.vercel.app`
+- Supabase Authentication URL configuration: site URL and permitted redirect
+  URLs for `https://hydropop-lake.vercel.app`
 
 The future transport mapping is intentionally simple:
 

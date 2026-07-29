@@ -1,13 +1,15 @@
 import { apiFailure, apiSuccess } from "@/lib/application/http/api-route";
 import { issueNfcCredential } from "@/lib/application/nfc/issue-nfc-credential";
+import {
+  buildNfcUrl,
+  getCanonicalSiteUrl,
+} from "@/lib/application/urls/site-url";
 import { getAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import {
   getNfcTagList,
   getOwnedNfcTag,
 } from "@/lib/infrastructure/supabase/nfc";
-import { createNfcRpcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
-import { getSiteUrl } from "@/lib/infrastructure/supabase/public-env";
-import { createClient } from "@/lib/infrastructure/supabase/server";
+import { createNfcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
 
 export async function POST(
   _request: Request,
@@ -24,7 +26,7 @@ export async function POST(
   const { id } = await context.params;
 
   try {
-    const queryClient = await createClient();
+    const queryClient = await createNfcClient();
     const existing = await getOwnedNfcTag(
       queryClient,
       authentication.user.id,
@@ -39,14 +41,14 @@ export async function POST(
       return apiFailure("NFC_TAG_REVOKED");
     }
 
-    const rpcClient = await createNfcRpcClient();
+    const siteUrl = getCanonicalSiteUrl();
     const issued = await issueNfcCredential({
       mutate: async (tokenHash) =>
-        await rpcClient.rpc("rotate_nfc_tag", {
+        await queryClient.rpc("rotate_nfc_tag", {
           p_tag_id: id,
           p_token_hash: tokenHash,
         }),
-      siteUrl: getSiteUrl(),
+      siteUrl,
     });
     const list = await getNfcTagList(queryClient, authentication.user.id);
     const tag = list.tags.find((item) => item.id === issued.data.id);
@@ -56,8 +58,11 @@ export async function POST(
     }
 
     return apiSuccess({
-      nfcUrl: issued.nfcUrl,
+      friendlyUrl: tag.friendlyCode
+        ? buildNfcUrl(siteUrl, tag.friendlyCode)
+        : null,
       rawToken: issued.rawToken,
+      secureUrl: issued.secureUrl,
       tag,
     });
   } catch (error) {

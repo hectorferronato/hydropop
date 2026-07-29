@@ -51,7 +51,7 @@ export async function completeNfcBottle({
   input,
   markConfirmed,
   now = new Date(),
-  resolveToken,
+  resolveIdentifier,
 }: {
   executeAtomicEvent: AtomicHydrationEventExecutor;
   getHydrationSnapshot: () => Promise<HydrationSnapshot>;
@@ -59,7 +59,7 @@ export async function completeNfcBottle({
   input: unknown;
   markConfirmed: (tagId: string, eventId: string) => Promise<string>;
   now?: Date;
-  resolveToken: (token: string) => Promise<NfcScanResolution | null>;
+  resolveIdentifier: (identifier: string) => Promise<NfcScanResolution | null>;
 }): Promise<NfcCompletionResult> {
   const parsed = nfcCompletionInputSchema.safeParse(input);
 
@@ -67,7 +67,7 @@ export async function completeNfcBottle({
     throw new NfcApplicationError("INVALID_INPUT");
   }
 
-  const resolution = await resolveToken(parsed.data.token);
+  const resolution = await resolveIdentifier(parsed.data.identifier);
 
   if (!resolution) {
     throw new NfcApplicationError("NFC_TAG_UNAVAILABLE");

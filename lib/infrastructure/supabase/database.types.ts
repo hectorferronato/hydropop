@@ -239,10 +239,47 @@ export type Database = {
           },
         ]
       }
+      nfc_friendly_code_reservations: {
+        Row: {
+          friendly_code: string
+          reserved_at: string
+          tag_id: string
+          user_id: string
+        }
+        Insert: {
+          friendly_code: string
+          reserved_at?: string
+          tag_id: string
+          user_id: string
+        }
+        Update: {
+          friendly_code?: string
+          reserved_at?: string
+          tag_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfc_friendly_code_reservations_tag_owner_fk"
+            columns: ["tag_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "nfc_tags"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "nfc_friendly_code_reservations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nfc_tags: {
         Row: {
           bottle_id: string
           created_at: string
+          friendly_code: string | null
           id: string
           label: string | null
           last_scanned_at: string | null
@@ -253,6 +290,7 @@ export type Database = {
         Insert: {
           bottle_id: string
           created_at?: string
+          friendly_code?: string | null
           id?: string
           label?: string | null
           last_scanned_at?: string | null
@@ -263,6 +301,7 @@ export type Database = {
         Update: {
           bottle_id?: string
           created_at?: string
+          friendly_code?: string | null
           id?: string
           label?: string | null
           last_scanned_at?: string | null
@@ -326,10 +365,16 @@ export type Database = {
     }
     Functions: {
       create_nfc_tag: {
-        Args: { p_bottle_id: string; p_label?: string; p_token_hash: string }
+        Args: {
+          p_bottle_id: string
+          p_friendly_code?: string
+          p_label?: string
+          p_token_hash: string
+        }
         Returns: {
           bottle_id: string
           created_at: string
+          friendly_code: string | null
           id: string
           label: string | null
           last_scanned_at: string | null
@@ -367,6 +412,7 @@ export type Database = {
         Returns: {
           bottle_id: string
           created_at: string
+          friendly_code: string | null
           id: string
           label: string | null
           last_scanned_at: string | null
@@ -386,6 +432,7 @@ export type Database = {
         Returns: {
           bottle_id: string
           created_at: string
+          friendly_code: string | null
           id: string
           label: string | null
           last_scanned_at: string | null
@@ -419,10 +466,16 @@ export type Database = {
         Returns: string
       }
       update_nfc_tag: {
-        Args: { p_bottle_id: string; p_label: string; p_tag_id: string }
+        Args: {
+          p_bottle_id: string
+          p_friendly_code: string
+          p_label: string
+          p_tag_id: string
+        }
         Returns: {
           bottle_id: string
           created_at: string
+          friendly_code: string | null
           id: string
           label: string | null
           last_scanned_at: string | null

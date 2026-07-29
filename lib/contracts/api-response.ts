@@ -13,6 +13,7 @@ export const apiErrorCodes = [
   "NFC_TAG_NOT_FOUND",
   "NFC_TAG_REVOKED",
   "NFC_TAG_UNAVAILABLE",
+  "NFC_CODE_UNAVAILABLE",
   "RECENT_COMPLETION",
   "EVENT_TOO_OLD",
   "EVENT_IN_FUTURE",
@@ -47,6 +48,8 @@ export const safeApiErrorMessages: Record<ApiErrorCode, string> = {
   NFC_TAG_NOT_FOUND: "That NFC tag could not be found.",
   NFC_TAG_REVOKED: "That NFC tag has been revoked.",
   NFC_TAG_UNAVAILABLE: "This NFC tag is unavailable.",
+  NFC_CODE_UNAVAILABLE:
+    "That friendly pilot code is unavailable. Choose another code.",
   RECENT_COMPLETION:
     "You recorded this bottle less than a minute ago. Record another one anyway?",
   UNAUTHENTICATED: "Sign in to continue.",

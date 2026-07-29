@@ -4,8 +4,7 @@ import {
   getNfcTagList,
   getOwnedNfcTag,
 } from "@/lib/infrastructure/supabase/nfc";
-import { createNfcRpcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
-import { createClient } from "@/lib/infrastructure/supabase/server";
+import { createNfcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
 
 export async function POST(
   _request: Request,
@@ -22,7 +21,7 @@ export async function POST(
   const { id } = await context.params;
 
   try {
-    const queryClient = await createClient();
+    const queryClient = await createNfcClient();
     const existing = await getOwnedNfcTag(
       queryClient,
       authentication.user.id,
@@ -37,8 +36,7 @@ export async function POST(
       return apiFailure("NFC_TAG_REVOKED");
     }
 
-    const rpcClient = await createNfcRpcClient();
-    const { data, error } = await rpcClient.rpc("revoke_nfc_tag", {
+    const { data, error } = await queryClient.rpc("revoke_nfc_tag", {
       p_tag_id: id,
     });
 

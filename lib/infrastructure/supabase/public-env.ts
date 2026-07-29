@@ -5,8 +5,6 @@ const publicSupabaseConfigSchema = z.object({
   publishableKey: z.string().trim().min(1),
 });
 
-const siteUrlSchema = z.url();
-
 export type PublicSupabaseConfig = z.infer<typeof publicSupabaseConfigSchema>;
 
 export function getPublicSupabaseConfig(): PublicSupabaseConfig {
@@ -18,18 +16,6 @@ export function getPublicSupabaseConfig(): PublicSupabaseConfig {
   if (!result.success) {
     throw new Error(
       "Missing or invalid public Supabase configuration. See .env.example.",
-    );
-  }
-
-  return result.data;
-}
-
-export function getSiteUrl(): string {
-  const result = siteUrlSchema.safeParse(process.env.NEXT_PUBLIC_SITE_URL);
-
-  if (!result.success) {
-    throw new Error(
-      "Missing or invalid NEXT_PUBLIC_SITE_URL. See .env.example.",
     );
   }
 

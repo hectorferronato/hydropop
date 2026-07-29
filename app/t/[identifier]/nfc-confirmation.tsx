@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import type { ApiResponse } from "@/lib/contracts/api-response";
 import type { NfcCompletionResult } from "@/lib/contracts/nfc";
@@ -28,7 +29,7 @@ export function NfcConfirmation({
   initialNextCheckpointAt,
   normalFillMl,
   timezone,
-  token,
+  identifier,
   unit,
 }: {
   initialCompletedBottleCount: number;
@@ -37,9 +38,10 @@ export function NfcConfirmation({
   initialNextCheckpointAt: string | null;
   normalFillMl: number;
   timezone: string;
-  token: string;
+  identifier: string;
   unit: VolumeUnit;
 }) {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [request, setRequest] = useState<PendingConfirmation | null>(null);
   const [recentWarning, setRecentWarning] = useState(false);
@@ -62,7 +64,7 @@ export function NfcConfirmation({
           confirmRecent,
           idempotencyKey: currentRequest.idempotencyKey,
           occurredAt: currentRequest.occurredAt,
-          token,
+          identifier,
         }),
         headers: { "content-type": "application/json" },
         method: "POST",
@@ -136,12 +138,16 @@ export function NfcConfirmation({
             timezone,
           )}
         </p>
-        <a
-          href="/today"
+        <button
+          type="button"
+          onClick={() => {
+            router.push("/today");
+            router.refresh();
+          }}
           className="bg-brand-primary mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-bold text-white"
         >
           View Today
-        </a>
+        </button>
       </section>
     );
   }

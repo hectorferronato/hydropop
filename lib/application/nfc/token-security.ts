@@ -35,11 +35,3 @@ export function redactNfcToken(token: string): string {
 
   return `${token.slice(0, 4)}…${token.slice(-4)}`;
 }
-
-export function buildNfcUrl(siteUrl: string, token: string): string {
-  if (!isValidPublicNfcToken(token)) {
-    throw new Error("Invalid NFC token format.");
-  }
-
-  return new URL(`/t/${token}`, siteUrl).toString();
-}

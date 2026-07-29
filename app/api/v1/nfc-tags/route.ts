@@ -1,5 +1,12 @@
-import { issueNfcCredential } from "@/lib/application/nfc/issue-nfc-credential";
+import {
+  issueNfcCredential,
+  NfcCredentialIssueError,
+} from "@/lib/application/nfc/issue-nfc-credential";
 import { apiFailure, apiSuccess } from "@/lib/application/http/api-route";
+import {
+  buildNfcUrl,
+  getCanonicalSiteUrl,
+} from "@/lib/application/urls/site-url";
 import { createNfcTagInputSchema } from "@/lib/contracts/nfc";
 import { getAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import {
@@ -7,9 +14,7 @@ import {
   getOwnedActiveBottle,
   toNfcTagSummary,
 } from "@/lib/infrastructure/supabase/nfc";
-import { createNfcRpcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
-import { getSiteUrl } from "@/lib/infrastructure/supabase/public-env";
-import { createClient } from "@/lib/infrastructure/supabase/server";
+import { createNfcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +29,7 @@ export async function GET() {
 
   try {
     return apiSuccess(
-      await getNfcTagList(await createClient(), authentication.user.id),
+      await getNfcTagList(await createNfcClient(), authentication.user.id),
     );
   } catch {
     return apiFailure("INTERNAL_ERROR");
@@ -55,7 +60,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const queryClient = await createClient();
+    const queryClient = await createNfcClient();
     const bottle = await getOwnedActiveBottle(
       queryClient,
       authentication.user.id,
@@ -66,26 +71,38 @@ export async function POST(request: Request) {
       return apiFailure("BOTTLE_NOT_FOUND");
     }
 
-    const rpcClient = await createNfcRpcClient();
+    const rpcClient = queryClient;
+    const siteUrl = getCanonicalSiteUrl();
     const issued = await issueNfcCredential({
       mutate: async (tokenHash) =>
         await rpcClient.rpc("create_nfc_tag", {
           p_bottle_id: parsed.data.bottleId,
+          ...(parsed.data.friendlyCode
+            ? { p_friendly_code: parsed.data.friendlyCode }
+            : {}),
           ...(parsed.data.label ? { p_label: parsed.data.label } : {}),
           p_token_hash: tokenHash,
         }),
-      siteUrl: getSiteUrl(),
+      siteUrl,
     });
+    const tag = toNfcTagSummary(issued.data, bottle);
 
     return apiSuccess(
       {
-        nfcUrl: issued.nfcUrl,
+        friendlyUrl: tag.friendlyCode
+          ? buildNfcUrl(siteUrl, tag.friendlyCode)
+          : null,
         rawToken: issued.rawToken,
-        tag: toNfcTagSummary(issued.data, bottle),
+        secureUrl: issued.secureUrl,
+        tag,
       },
       201,
     );
   } catch (error) {
+    if (error instanceof NfcCredentialIssueError && error.code === "P0001") {
+      return apiFailure("NFC_CODE_UNAVAILABLE");
+    }
+
     console.error("[HydroPOP] NFC tag creation failed.", {
       code:
         error instanceof Error && "code" in error

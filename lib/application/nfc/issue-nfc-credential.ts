@@ -1,4 +1,6 @@
-import { buildNfcUrl, generateNfcToken, hashNfcToken } from "./token-security";
+import { buildNfcUrl } from "@/lib/application/urls/site-url";
+
+import { generateNfcToken, hashNfcToken } from "./token-security";
 
 type MutationFailure = {
   code: string;
@@ -29,7 +31,7 @@ export async function issueNfcCredential<Data>({
 }: {
   mutate: TokenHashMutation<Data>;
   siteUrl: string;
-}): Promise<{ data: Data; nfcUrl: string; rawToken: string }> {
+}): Promise<{ data: Data; rawToken: string; secureUrl: string }> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const rawToken = generateNfcToken();
     const tokenHash = hashNfcToken(rawToken);
@@ -38,8 +40,8 @@ export async function issueNfcCredential<Data>({
     if (result.data && !result.error) {
       return {
         data: result.data,
-        nfcUrl: buildNfcUrl(siteUrl, rawToken),
         rawToken,
+        secureUrl: buildNfcUrl(siteUrl, rawToken),
       };
     }
 

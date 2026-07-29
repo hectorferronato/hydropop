@@ -22,9 +22,19 @@ const nfcMigration = readFileSync(
   ),
   "utf8",
 );
-const scanPage = readFileSync(resolve(root, "app/t/[token]/page.tsx"), "utf8");
+const friendlyMigration = readFileSync(
+  resolve(
+    root,
+    "supabase/migrations/20260729120000_add_nfc_friendly_codes.sql",
+  ),
+  "utf8",
+);
+const scanPage = readFileSync(
+  resolve(root, "app/t/[identifier]/page.tsx"),
+  "utf8",
+);
 const confirmationClient = readFileSync(
-  resolve(root, "app/t/[token]/nfc-confirmation.tsx"),
+  resolve(root, "app/t/[identifier]/nfc-confirmation.tsx"),
   "utf8",
 );
 const completionRoute = readFileSync(
@@ -74,6 +84,77 @@ describe("NFC management and scan contracts", () => {
     );
     expect(rlsMigration).toContain(
       "grant select, insert, update on table public.nfc_tags to authenticated;",
+    );
+  });
+
+  it("adds normalized per-user friendly codes without weakening secure tokens", () => {
+    expect(friendlyMigration).toContain("add column friendly_code text");
+    expect(friendlyMigration).toContain(
+      "create unique index nfc_tags_user_friendly_code_idx",
+    );
+    expect(friendlyMigration).toContain(
+      "on public.nfc_tags (user_id, friendly_code)",
+    );
+    expect(friendlyMigration).toContain("where friendly_code is not null");
+    expect(friendlyMigration).toContain(
+      "friendly_code = lower(pg_catalog.btrim(friendly_code))",
+    );
+    expect(friendlyMigration).toContain(
+      "friendly_code ~ '^[a-z0-9]+(-[a-z0-9]+)*$'",
+    );
+    expect(friendlyMigration).not.toMatch(
+      /alter table public\.nfc_tags[\s\S]*?drop column token_hash/iu,
+    );
+  });
+
+  it("permanently reserves changed and revoked codes per user", () => {
+    expect(friendlyMigration).toContain(
+      "create table public.nfc_friendly_code_reservations",
+    );
+    expect(friendlyMigration).toContain("primary key (user_id, friendly_code)");
+    expect(friendlyMigration).toContain(
+      "Permanent per-user friendly-code reservations.",
+    );
+    expect(friendlyMigration).not.toMatch(
+      /delete from public\.nfc_friendly_code_reservations/iu,
+    );
+    expect(friendlyMigration).toContain(
+      "alter table public.nfc_friendly_code_reservations enable row level security",
+    );
+    expect(friendlyMigration).toContain("user_id = (select auth.uid())");
+    expect(friendlyMigration).toContain(
+      "create trigger reserve_nfc_friendly_code_after_write",
+    );
+    expect(friendlyMigration).toContain(
+      "after insert or update of friendly_code",
+    );
+    expect(friendlyMigration).toMatch(
+      /create function public\.reserve_nfc_friendly_code\(\)[\s\S]*?security invoker[\s\S]*?set search_path = ''/u,
+    );
+  });
+
+  it("replaces create and update RPCs without overloads or client user IDs", () => {
+    expect(friendlyMigration).toContain(
+      "drop function public.create_nfc_tag(uuid, text, text);",
+    );
+    expect(friendlyMigration).toContain(
+      "drop function public.update_nfc_tag(uuid, uuid, text);",
+    );
+    expect(friendlyMigration).toMatch(
+      /create function public\.create_nfc_tag\([\s\S]*?security invoker[\s\S]*?set search_path = ''/u,
+    );
+    expect(friendlyMigration).toMatch(
+      /create function public\.update_nfc_tag\([\s\S]*?security invoker[\s\S]*?set search_path = ''/u,
+    );
+    expect(friendlyMigration).not.toMatch(/\bp_user_id\b/u);
+    expect(
+      friendlyMigration.match(/v_user_id uuid := auth\.uid\(\);/gu),
+    ).toHaveLength(2);
+    expect(friendlyMigration).toContain(
+      "revoke execute on function public.create_nfc_tag(uuid, text, text, text)",
+    );
+    expect(friendlyMigration).toContain(
+      "grant execute on function public.update_nfc_tag(uuid, uuid, text, text)",
     );
   });
 
@@ -155,7 +236,16 @@ describe("NFC management and scan contracts", () => {
     expect(scanPage).not.toMatch(/\.(?:insert|update|delete|rpc)\s*\(/u);
     expect(scanPage).not.toContain("processHydrationEvent");
     expect(scanPage).not.toContain("completeNfcBottle");
-    expect(scanPage).toContain("Loading or refreshing this page never records");
+    expect(scanPage).toMatch(
+      /Loading or refreshing this page\s+never records/u,
+    );
+  });
+
+  it("resolves identifiers only after server-side authentication", () => {
+    expect(scanPage.indexOf("requireAllowedUser(destination)")).toBeLessThan(
+      scanPage.indexOf("resolveNfcScan("),
+    );
+    expect(scanPage).toContain("createNfcScanDataSource");
   });
 
   it("requires an explicit POST confirmation and never auto-submits", () => {
@@ -164,6 +254,11 @@ describe("NFC management and scan contracts", () => {
     expect(confirmationClient).toContain("onClick={() => void submit(false)}");
     expect(confirmationClient).toContain("crypto.randomUUID()");
     expect(confirmationClient).not.toMatch(/useEffect\s*\(/u);
+  });
+
+  it("invalidates Today and Calendar after confirmed completion", () => {
+    expect(completionRoute).toContain('revalidatePath("/today")');
+    expect(completionRoute).toContain('revalidatePath("/calendar")');
   });
 
   it("reuses the authoritative hydration processor with no derived browser input", () => {

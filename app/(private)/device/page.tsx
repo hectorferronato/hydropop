@@ -5,6 +5,7 @@ import { DeviceIcon } from "@/components/icons";
 import { PageHeader } from "@/components/page-header";
 import { requireAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { getNfcTagList } from "@/lib/infrastructure/supabase/nfc";
+import { createNfcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
 import { createClient } from "@/lib/infrastructure/supabase/server";
 import { formatDisplayVolume, parseVolumeUnit } from "@/lib/units/volume";
 
@@ -40,7 +41,7 @@ export default async function DevicePage() {
       .select("preferred_unit, timezone")
       .eq("id", user.id)
       .maybeSingle(),
-    getNfcTagList(supabase, user.id),
+    getNfcTagList(await createNfcClient(), user.id),
   ]);
   const unit = parseVolumeUnit(profile?.preferred_unit);
   const timezone = profile?.timezone ?? "America/New_York";
@@ -84,13 +85,28 @@ export default async function DevicePage() {
             value={activeTag?.bottle.name ?? "None"}
           />
           <OverviewRow
-            label="Normal credited amount"
+            label="Bottle capacity"
+            value={
+              activeTag
+                ? `${formatDisplayVolume(
+                    activeTag.bottle.capacityMl,
+                    unit,
+                  )} ${unit}`
+                : "Not available"
+            }
+          />
+          <OverviewRow
+            label="Records per completion"
             value={
               activeTag
                 ? `${formatDisplayVolume(
                     activeTag.bottle.normalFillMl,
                     unit,
-                  )} ${unit}`
+                  )} ${unit}${
+                    activeTag.bottle.typicalFillMl === null
+                      ? " — uses full capacity"
+                      : ""
+                  }`
                 : "Not available"
             }
           />

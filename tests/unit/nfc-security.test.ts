@@ -34,6 +34,7 @@ const activeBottle: ResolvedNfcBottle = {
 
 const activeTag: ResolvedNfcTag = {
   bottleId,
+  friendlyCode: "bea-kitchen",
   id: tagId,
   label: "Kitchen",
   lastConfirmedAt: null,
@@ -50,6 +51,7 @@ function dataSource({
 } = {}) {
   return {
     findBottle: vi.fn(async () => bottle),
+    findTagByFriendlyCode: vi.fn(async () => tag),
     findTagByHash: vi.fn(async () => tag),
   } satisfies NfcScanDataSource;
 }
@@ -100,7 +102,7 @@ describe("NFC token security", () => {
 
     expect(hashes).toEqual([hashNfcToken(issued.rawToken)]);
     expect(hashes[0]).not.toBe(issued.rawToken);
-    expect(issued.nfcUrl).toBe(`http://localhost:3000/t/${issued.rawToken}`);
+    expect(issued.secureUrl).toBe(`http://localhost:3000/t/${issued.rawToken}`);
     expect(issued.data).toEqual({ id: tagId });
   });
 
@@ -108,10 +110,90 @@ describe("NFC token security", () => {
     const source = dataSource();
 
     await expect(
-      resolveNfcScan(source, userId, "too-short"),
+      resolveNfcScan(source, userId, "bad_code"),
     ).resolves.toBeNull();
     expect(source.findTagByHash).not.toHaveBeenCalled();
+    expect(source.findTagByFriendlyCode).not.toHaveBeenCalled();
     expect(source.findBottle).not.toHaveBeenCalled();
+  });
+
+  it("resolves a normalized friendly code only through the owner-scoped lookup", async () => {
+    const source = dataSource();
+
+    await expect(
+      resolveNfcScan(source, userId, " Bea-Kitchen "),
+    ).resolves.toMatchObject({
+      bottle: { id: bottleId },
+      tag: { friendlyCode: "bea-kitchen", id: tagId },
+    });
+    expect(source.findTagByFriendlyCode).toHaveBeenCalledWith(
+      userId,
+      "bea-kitchen",
+    );
+    expect(source.findTagByHash).not.toHaveBeenCalled();
+  });
+
+  it("allows different users to resolve the same friendly code only to their own tag", async () => {
+    const secondUserId = "e74c82bd-b0fa-44af-a25b-b5db036b676f";
+    const secondTag = {
+      ...activeTag,
+      id: "08ba9d5b-ef27-43df-804c-b69a3cc2ad14",
+      userId: secondUserId,
+    };
+    const secondBottle = {
+      ...activeBottle,
+      id: "339267da-8585-4147-a9d0-d715f355ca83",
+      userId: secondUserId,
+    };
+    secondTag.bottleId = secondBottle.id;
+    const source = {
+      findBottle: vi.fn(async (owner: string) =>
+        owner === userId ? activeBottle : secondBottle,
+      ),
+      findTagByFriendlyCode: vi.fn(async (owner: string) =>
+        owner === userId ? activeTag : secondTag,
+      ),
+      findTagByHash: vi.fn(async () => null),
+    } satisfies NfcScanDataSource;
+
+    await expect(
+      resolveNfcScan(source, userId, "bea-kitchen"),
+    ).resolves.toMatchObject({ tag: { id: tagId, userId } });
+    await expect(
+      resolveNfcScan(source, secondUserId, "bea-kitchen"),
+    ).resolves.toMatchObject({
+      tag: { id: secondTag.id, userId: secondUserId },
+    });
+  });
+
+  it("changing a friendly code invalidates the previous friendly identifier", async () => {
+    const friendlyTags = new Map<string, ResolvedNfcTag>([
+      ["bea-counter", { ...activeTag, friendlyCode: "bea-counter" }],
+    ]);
+    const source = {
+      findBottle: vi.fn(async () => activeBottle),
+      findTagByFriendlyCode: vi.fn(
+        async (_owner: string, code: string) => friendlyTags.get(code) ?? null,
+      ),
+      findTagByHash: vi.fn(async () => activeTag),
+    } satisfies NfcScanDataSource;
+
+    await expect(
+      resolveNfcScan(source, userId, "bea-kitchen"),
+    ).resolves.toBeNull();
+    await expect(
+      resolveNfcScan(source, userId, "bea-counter"),
+    ).resolves.toMatchObject({ tag: { id: tagId } });
+  });
+
+  it("secure-token rotation leaves friendly resolution unchanged", async () => {
+    const source = dataSource();
+
+    await expect(
+      resolveNfcScan(source, userId, "bea-kitchen"),
+    ).resolves.toMatchObject({
+      tag: { friendlyCode: "bea-kitchen", id: tagId },
+    });
   });
 
   it("resolves an active owned tag and its typical fill", async () => {
@@ -189,6 +271,7 @@ describe("NFC token security", () => {
     stored.set(hashNfcToken(newToken), activeTag);
     const source = {
       findBottle: vi.fn(async () => activeBottle),
+      findTagByFriendlyCode: vi.fn(async () => null),
       findTagByHash: vi.fn(async (_owner: string, hash: string) => {
         return stored.get(hash) ?? null;
       }),

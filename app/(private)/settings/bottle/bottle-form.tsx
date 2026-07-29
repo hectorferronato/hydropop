@@ -58,7 +58,7 @@ export function BottleForm({ initialValues }: { initialValues: BottleValues }) {
             htmlFor="bottleCapacity"
             className="text-brand-secondary/70 text-sm font-semibold"
           >
-            Capacity in {initialValues.preferredUnit}
+            Physical bottle capacity in {initialValues.preferredUnit}
           </label>
           <div className="relative">
             <input
@@ -84,7 +84,7 @@ export function BottleForm({ initialValues }: { initialValues: BottleValues }) {
             htmlFor="bottleTypicalFill"
             className="text-brand-secondary/70 text-sm font-semibold"
           >
-            Typical fill amount{" "}
+            Records per completion{" "}
             <span className="font-normal opacity-50">optional</span>
           </label>
           <div className="relative">
@@ -104,8 +104,8 @@ export function BottleForm({ initialValues }: { initialValues: BottleValues }) {
             </span>
           </div>
           <p className="text-brand-secondary/40 mt-2 text-xs leading-5">
-            How much water you normally put into the bottle. Leave blank and
-            HydroPOP will use its full capacity.
+            This is the normal fill amount credited by each completion. Leave
+            blank and HydroPOP records the full physical capacity.
           </p>
           <SettingsFieldError field="bottleTypicalFill" state={state} />
         </div>

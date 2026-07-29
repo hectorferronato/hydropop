@@ -10,6 +10,7 @@ import { getTodayDashboard } from "@/lib/application/hydration/get-today-dashboa
 import { resolveNfcScan } from "@/lib/application/nfc/resolve-nfc-scan";
 import { requireAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { createNfcScanDataSource } from "@/lib/infrastructure/supabase/nfc";
+import { createNfcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
 import { getOnboardingSnapshot } from "@/lib/infrastructure/supabase/onboarding";
 import { createClient } from "@/lib/infrastructure/supabase/server";
 import { formatDisplayVolume } from "@/lib/units/volume";
@@ -45,15 +46,15 @@ function UnavailableNfcTag() {
   );
 }
 
-export default async function NfcTokenPage({
+export default async function NfcIdentifierPage({
   params,
 }: {
-  params: Promise<{ token: string }>;
+  params: Promise<{ identifier: string }>;
 }) {
   await connection();
 
-  const { token } = await params;
-  const destination = `/t/${encodeURIComponent(token)}` as Route;
+  const { identifier } = await params;
+  const destination = `/t/${encodeURIComponent(identifier)}` as Route;
   const user = await requireAllowedUser(destination);
   const supabase = await createClient();
   const onboarding = await getOnboardingSnapshot(supabase, user.id);
@@ -65,9 +66,9 @@ export default async function NfcTokenPage({
   }
 
   const resolution = await resolveNfcScan(
-    createNfcScanDataSource(supabase),
+    createNfcScanDataSource(await createNfcClient()),
     user.id,
-    token,
+    identifier,
   );
 
   if (!resolution) {
@@ -95,7 +96,9 @@ export default async function NfcTokenPage({
             <DropIcon className="size-8" />
           </div>
           <h1 className="text-brand-secondary mt-5 text-3xl font-bold tracking-[-0.04em]">
-            Finished your bottle?
+            {dashboard.daySummary.completedBottleCount === 0
+              ? "Completed a bottle?"
+              : "Completed another bottle?"}
           </h1>
           <p className="text-brand-secondary mt-3 text-lg font-bold">
             {resolution.bottle.name}
@@ -115,20 +118,12 @@ export default async function NfcTokenPage({
             </dd>
           </div>
           <div className="flex justify-between gap-4 py-2">
-            <dt className="text-brand-secondary/45">Typical fill</dt>
+            <dt className="text-brand-secondary/45">Records per completion</dt>
             <dd className="text-brand-secondary font-bold">
-              {resolution.bottle.typicalFillMl === null
-                ? "Using full capacity"
-                : `${formatDisplayVolume(
-                    resolution.bottle.typicalFillMl,
-                    unit,
-                  )} ${unit}`}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-4 py-2">
-            <dt className="text-brand-secondary/45">This will add</dt>
-            <dd className="text-brand-primary font-bold">
               {formatDisplayVolume(resolution.normalFillMl, unit)} {unit}
+              {resolution.bottle.typicalFillMl === null
+                ? " — uses full capacity"
+                : ""}
             </dd>
           </div>
         </dl>
@@ -144,15 +139,16 @@ export default async function NfcTokenPage({
           }
           normalFillMl={resolution.normalFillMl}
           timezone={dashboard.profile.timezone}
-          token={token}
+          identifier={identifier}
           unit={unit}
         />
 
         <div className="border-brand-secondary/5 mt-6 border-t pt-5">
           <p className="text-brand-secondary/45 text-xs leading-5">
-            HydroPOP records your normal fill amount. Partial fills must be
-            corrected in the app. Loading or refreshing this page never records
-            hydration.
+            This records your normal fill amount of{" "}
+            {formatDisplayVolume(resolution.normalFillMl, unit)} {unit}. Partial
+            fills must be corrected in the app. Loading or refreshing this page
+            never records hydration.
           </p>
           <Link
             href="/today"

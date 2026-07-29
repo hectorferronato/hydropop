@@ -2,6 +2,7 @@ import { getTodayDashboard } from "@/lib/application/hydration/get-today-dashboa
 import { apiFailure, apiSuccess } from "@/lib/application/http/api-route";
 import { completeNfcBottle } from "@/lib/application/nfc/complete-nfc-bottle";
 import { resolveNfcScan } from "@/lib/application/nfc/resolve-nfc-scan";
+import { revalidatePath } from "next/cache";
 import {
   HydrationApplicationError,
   NfcApplicationError,
@@ -10,7 +11,7 @@ import { getAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { createHydrationRpcClient } from "@/lib/infrastructure/supabase/hydration-rpc";
 import { getHydrationSnapshot } from "@/lib/infrastructure/supabase/hydration";
 import { createNfcScanDataSource } from "@/lib/infrastructure/supabase/nfc";
-import { createNfcRpcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
+import { createNfcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
 import { createClient } from "@/lib/infrastructure/supabase/server";
 
 export async function POST(request: Request) {
@@ -31,12 +32,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const [queryClient, hydrationRpcClient, nfcRpcClient] = await Promise.all([
+    const [queryClient, hydrationRpcClient, nfcClient] = await Promise.all([
       createClient(),
       createHydrationRpcClient(),
-      createNfcRpcClient(),
+      createNfcClient(),
     ]);
-    const dataSource = createNfcScanDataSource(queryClient);
+    const dataSource = createNfcScanDataSource(nfcClient);
     const result = await completeNfcBottle({
       executeAtomicEvent: async (arguments_) =>
         await hydrationRpcClient.rpc("process_hydration_event", arguments_),
@@ -50,13 +51,10 @@ export async function POST(request: Request) {
         ),
       input,
       markConfirmed: async (tagId, eventId) => {
-        const { data, error } = await nfcRpcClient.rpc(
-          "mark_nfc_tag_confirmed",
-          {
-            p_event_id: eventId,
-            p_tag_id: tagId,
-          },
-        );
+        const { data, error } = await nfcClient.rpc("mark_nfc_tag_confirmed", {
+          p_event_id: eventId,
+          p_tag_id: tagId,
+        });
 
         if (error || !data) {
           console.error("[HydroPOP] NFC confirmation timestamp failed.", {
@@ -67,9 +65,12 @@ export async function POST(request: Request) {
 
         return data;
       },
-      resolveToken: async (token) =>
-        await resolveNfcScan(dataSource, authentication.user.id, token),
+      resolveIdentifier: async (identifier) =>
+        await resolveNfcScan(dataSource, authentication.user.id, identifier),
     });
+
+    revalidatePath("/today");
+    revalidatePath("/calendar");
 
     return apiSuccess(result, result.duplicate ? 200 : 201);
   } catch (error) {

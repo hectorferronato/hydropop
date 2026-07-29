@@ -44,6 +44,18 @@ test("preserves the exact NFC destination through unauthenticated scan redirect"
   );
 });
 
+test("authenticates before resolving a friendly NFC code", async ({ page }) => {
+  await page.goto("/t/bea-kitchen");
+
+  await expect(
+    page.getByRole("heading", { name: "Sign in to HydroPOP" }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/auth\/login\?next=%2Ft%2Fbea-kitchen$/u);
+  await expect(page.locator('input[name="next"]')).toHaveValue(
+    "/t/bea-kitchen",
+  );
+});
+
 test("protects the settings route and preserves it through login", async ({
   page,
 }) => {
@@ -82,7 +94,7 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
       data: {
         idempotencyKey: "playwright-nfc-event-key",
         occurredAt: new Date().toISOString(),
-        token: nfcToken,
+        identifier: nfcToken,
       },
     },
   );

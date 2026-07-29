@@ -17,7 +17,13 @@ type BottleRow = Database["public"]["Tables"]["bottles"]["Row"];
 type TagRow = Database["public"]["Tables"]["nfc_tags"]["Row"];
 type TagSummaryRow = Pick<
   TagRow,
-  "bottle_id" | "created_at" | "id" | "label" | "last_scanned_at" | "status"
+  | "bottle_id"
+  | "created_at"
+  | "friendly_code"
+  | "id"
+  | "label"
+  | "last_scanned_at"
+  | "status"
 >;
 
 type SafeQueryError = {
@@ -61,6 +67,7 @@ export function toNfcTagSummary(
   return {
     bottle: toBottleSummary(bottle),
     createdAt: tag.created_at,
+    friendlyCode: tag.friendly_code,
     id: tag.id,
     label: tag.label,
     lastConfirmedAt: tag.last_scanned_at,
@@ -72,12 +79,18 @@ export async function getNfcTagList(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<NfcTagList> {
-  const [tagsResult, bottlesResult] = await Promise.all([
+  const [tagsResult, reservationsResult, bottlesResult] = await Promise.all([
     supabase
       .from("nfc_tags")
-      .select("bottle_id, created_at, id, label, last_scanned_at, status")
+      .select(
+        "bottle_id, created_at, friendly_code, id, label, last_scanned_at, status",
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("nfc_friendly_code_reservations")
+      .select("friendly_code, tag_id")
+      .eq("user_id", userId),
     supabase
       .from("bottles")
       .select("*")
@@ -93,6 +106,10 @@ export async function getNfcTagList(
     throwNfcReadError("bottles", bottlesResult.error);
   }
 
+  if (reservationsResult.error) {
+    throwNfcReadError("tags", reservationsResult.error);
+  }
+
   const bottles = bottlesResult.data ?? [];
   const bottlesById = new Map(bottles.map((bottle) => [bottle.id, bottle]));
   const tags = (tagsResult.data ?? []).flatMap((tag) => {
@@ -104,6 +121,12 @@ export async function getNfcTagList(
     assignableBottles: bottles
       .filter((bottle) => bottle.archived_at === null && bottle.is_primary)
       .map(toBottleSummary),
+    friendlyCodeReservations: (reservationsResult.data ?? []).map(
+      (reservation) => ({
+        code: reservation.friendly_code,
+        tagId: reservation.tag_id,
+      }),
+    ),
     tags,
   };
 }
@@ -115,7 +138,9 @@ export async function getOwnedNfcTag(
 ): Promise<TagSummaryRow | null> {
   const { data, error } = await supabase
     .from("nfc_tags")
-    .select("bottle_id, created_at, id, label, last_scanned_at, status")
+    .select(
+      "bottle_id, created_at, friendly_code, id, label, last_scanned_at, status",
+    )
     .eq("id", tagId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -172,7 +197,9 @@ export function createNfcScanDataSource(
     async findTagByHash(userId, tokenHash): Promise<ResolvedNfcTag | null> {
       const { data, error } = await supabase
         .from("nfc_tags")
-        .select("bottle_id, id, label, last_scanned_at, status, user_id")
+        .select(
+          "bottle_id, friendly_code, id, label, last_scanned_at, status, user_id",
+        )
         .eq("token_hash", tokenHash)
         .eq("user_id", userId)
         .eq("status", "active")
@@ -185,6 +212,37 @@ export function createNfcScanDataSource(
       return data
         ? {
             bottleId: data.bottle_id,
+            friendlyCode: data.friendly_code,
+            id: data.id,
+            label: data.label,
+            lastConfirmedAt: data.last_scanned_at,
+            status: data.status,
+            userId: data.user_id,
+          }
+        : null;
+    },
+    async findTagByFriendlyCode(
+      userId,
+      friendlyCode,
+    ): Promise<ResolvedNfcTag | null> {
+      const { data, error } = await supabase
+        .from("nfc_tags")
+        .select(
+          "bottle_id, friendly_code, id, label, last_scanned_at, status, user_id",
+        )
+        .eq("friendly_code", friendlyCode)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (error) {
+        throwNfcReadError("tag", error);
+      }
+
+      return data
+        ? {
+            bottleId: data.bottle_id,
+            friendlyCode: data.friendly_code,
             id: data.id,
             label: data.label,
             lastConfirmedAt: data.last_scanned_at,

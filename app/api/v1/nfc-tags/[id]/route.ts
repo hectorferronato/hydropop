@@ -6,8 +6,7 @@ import {
   getOwnedActiveBottle,
   getOwnedNfcTag,
 } from "@/lib/infrastructure/supabase/nfc";
-import { createNfcRpcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
-import { createClient } from "@/lib/infrastructure/supabase/server";
+import { createNfcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
 
 export async function PUT(
   request: Request,
@@ -38,7 +37,7 @@ export async function PUT(
   const { id } = await context.params;
 
   try {
-    const queryClient = await createClient();
+    const queryClient = await createNfcClient();
     const [tag, bottle] = await Promise.all([
       getOwnedNfcTag(queryClient, authentication.user.id, id),
       getOwnedActiveBottle(
@@ -60,12 +59,16 @@ export async function PUT(
       return apiFailure("BOTTLE_NOT_FOUND");
     }
 
-    const rpcClient = await createNfcRpcClient();
-    const { data, error } = await rpcClient.rpc("update_nfc_tag", {
+    const { data, error } = await queryClient.rpc("update_nfc_tag", {
       p_bottle_id: parsed.data.bottleId,
+      p_friendly_code: parsed.data.friendlyCode ?? "",
       p_label: parsed.data.label ?? "",
       p_tag_id: id,
     });
+
+    if (error?.code === "P0001") {
+      return apiFailure("NFC_CODE_UNAVAILABLE");
+    }
 
     if (error || !data) {
       console.error("[HydroPOP] NFC tag update RPC failed.", {

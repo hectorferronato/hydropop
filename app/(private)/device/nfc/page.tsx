@@ -1,8 +1,10 @@
 import { connection } from "next/server";
 
 import { PageHeader } from "@/components/page-header";
+import { getCanonicalSiteUrl } from "@/lib/application/urls/site-url";
 import { requireAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { getNfcTagList } from "@/lib/infrastructure/supabase/nfc";
+import { createNfcClient } from "@/lib/infrastructure/supabase/nfc-rpc";
 import { createClient } from "@/lib/infrastructure/supabase/server";
 import { parseVolumeUnit } from "@/lib/units/volume";
 
@@ -19,7 +21,7 @@ export default async function NfcManagementPage() {
       .select("preferred_unit, timezone")
       .eq("id", user.id)
       .maybeSingle(),
-    getNfcTagList(supabase, user.id),
+    getNfcTagList(await createNfcClient(), user.id),
   ]);
 
   return (
@@ -31,6 +33,7 @@ export default async function NfcManagementPage() {
       />
       <NfcManager
         initialList={list}
+        siteUrl={getCanonicalSiteUrl()}
         timezone={profile?.timezone ?? "America/New_York"}
         unit={parseVolumeUnit(profile?.preferred_unit)}
       />

@@ -34,6 +34,7 @@ const resolution: NfcScanResolution = {
   normalFillMl: 650,
   tag: {
     bottleId,
+    friendlyCode: "bea-kitchen",
     id: tagId,
     label: "Kitchen",
     lastConfirmedAt: null,
@@ -127,7 +128,7 @@ function validInput(overrides: Record<string, unknown> = {}) {
   return {
     idempotencyKey,
     occurredAt: now.toISOString(),
-    token,
+    identifier: token,
     ...overrides,
   };
 }
@@ -157,7 +158,7 @@ function dependencies({
       buildTodayDashboard(updatedSnapshot, now),
     ),
     markConfirmed,
-    resolveToken: vi.fn(async () => resolved),
+    resolveIdentifier: vi.fn(async () => resolved),
   };
 }
 
@@ -179,6 +180,7 @@ describe("NFC bottle completion integration", () => {
       p_source: "nfc",
     });
     expect(result.creditedAmountMl).toBe(650);
+    expect(result.daySummary.consumedMl).toBe(650);
     expect(result.daySummary.completedBottleCount).toBe(1);
   });
 
