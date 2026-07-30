@@ -112,7 +112,11 @@ describe("trends, private profile, and community presentation", () => {
 
   it("keeps profile data private and preserves management routes", () => {
     expect(profile).toContain("Private profile");
-    expect(profile).toContain("visible only to you during the pilot");
+    expect(profile).toContain(
+      "Your account settings and lifetime statistics remain private",
+    );
+    expect(profile).toContain("View my community profile");
+    expect(profile).toContain("Community settings");
     expect(profile).toContain('href: "/settings/hydration"');
     expect(profile).toContain('href: "/settings/bottle"');
     expect(profile).toContain('href: "/device/nfc"');
@@ -121,10 +125,13 @@ describe("trends, private profile, and community presentation", () => {
     expect(profile).toContain('action="/auth/logout"');
   });
 
-  it("renders only a static, honest community placeholder", () => {
-    expect(community).toContain("Hydrate together");
-    expect(community).toContain("Coming soon");
-    expect(community).toContain("does not create public profiles");
+  it("renders explicit membership setup and the real private directory", () => {
+    expect(community).toContain("Join the HydroPOP community");
+    expect(community).toContain("HydroPOP Community");
+    expect(community).toContain("<CommunityJoinForm");
+    expect(community).toContain("<CommunityDirectory");
+    expect(community).toContain("getMyCommunityProfile");
+    expect(community).toContain("listCommunityMembers");
     expect(community).not.toMatch(/\.(?:insert|update|delete|rpc)\s*\(/u);
     expect(community).not.toContain("<form");
     expect(community).not.toContain("fake");

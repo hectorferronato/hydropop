@@ -4,9 +4,14 @@ const defaultDestination = "/today";
 const privateRoutePattern =
   /^\/(?:calendar|community|device|profile|settings|setup|today|trends)(?:\/.*)?$/u;
 const nfcRoutePattern = /^\/t\/[^/?#]+$/u;
+const communityMemberRoutePattern = /^\/u\/[a-z0-9]+(?:[._-][a-z0-9]+)*$/u;
 
 function isAllowedPathname(pathname: string): boolean {
-  return privateRoutePattern.test(pathname) || nfcRoutePattern.test(pathname);
+  return (
+    privateRoutePattern.test(pathname) ||
+    nfcRoutePattern.test(pathname) ||
+    communityMemberRoutePattern.test(pathname)
+  );
 }
 
 export function sanitizeLoginDestination(

@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
@@ -5,12 +6,14 @@ import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   DeviceIcon,
   DropIcon,
+  CommunityIcon,
   ProfileIcon,
   SettingsIcon,
 } from "@/components/icons";
 import { buildPrivateProfileSummary } from "@/lib/application/analytics/hydration-analytics";
 import { requireAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { getHydrationSnapshot } from "@/lib/infrastructure/supabase/hydration";
+import { getMyCommunityProfile } from "@/lib/infrastructure/supabase/community";
 import { createClient } from "@/lib/infrastructure/supabase/server";
 import { formatDisplayVolume } from "@/lib/units/volume";
 
@@ -68,10 +71,11 @@ export default async function ProfilePage() {
   await connection();
 
   const user = await requireAllowedUser("/profile");
-  const profile = buildPrivateProfileSummary(
-    await getHydrationSnapshot(await createClient(), user.id),
-    new Date(),
-  );
+  const [hydrationSnapshot, communityProfile] = await Promise.all([
+    getHydrationSnapshot(await createClient(), user.id),
+    getMyCommunityProfile(),
+  ]);
+  const profile = buildPrivateProfileSummary(hydrationSnapshot, new Date());
   const unit = profile.preferredUnit;
 
   return (
@@ -99,7 +103,8 @@ export default async function ProfilePage() {
           </div>
         </div>
         <p className="text-brand-secondary/55 mt-5 max-w-xl text-sm leading-6">
-          Your hydration details are visible only to you during the pilot.
+          Your account settings and lifetime statistics remain private. Only a
+          limited hydration summary is shared if you explicitly join Community.
         </p>
         <dl className="mt-5 grid grid-cols-2 gap-3 sm:max-w-xl">
           <div className="bg-brand-background rounded-2xl p-3">
@@ -193,6 +198,65 @@ export default async function ProfilePage() {
             recorded hydration day.
           </p>
         ) : null}
+      </section>
+
+      <section className="border-brand-secondary/5 mt-7 rounded-[1.75rem] border bg-white/85 p-5 sm:p-6">
+        <div className="flex items-start gap-4">
+          <span className="bg-brand-primary/8 text-brand-primary flex size-11 shrink-0 items-center justify-center rounded-2xl">
+            <CommunityIcon className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-brand-primary text-[0.65rem] font-bold tracking-[0.12em] uppercase">
+              Community
+            </p>
+            {communityProfile ? (
+              <>
+                <h2 className="text-brand-secondary mt-1 text-lg font-bold">
+                  @{communityProfile.username}
+                </h2>
+                <p className="text-brand-secondary/50 mt-1 text-sm">
+                  {communityProfile.isVisible
+                    ? "Visible to signed-in HydroPOP members"
+                    : "Hidden from other Community members"}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link
+                    href={`/u/${communityProfile.username}` as Route}
+                    className="bg-brand-primary inline-flex h-10 items-center rounded-xl px-3 text-xs font-bold text-white"
+                  >
+                    View my community profile
+                  </Link>
+                  <Link
+                    href={"/settings/community" as Route}
+                    className="border-brand-primary/15 text-brand-primary inline-flex h-10 items-center rounded-xl border px-3 text-xs font-bold"
+                  >
+                    Community settings
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-brand-secondary mt-1 text-lg font-bold">
+                  Join Community
+                </h2>
+                <p className="text-brand-secondary/50 mt-1 text-sm leading-6">
+                  Create an optional member identity and share only a limited
+                  hydration summary with signed-in friends and family.
+                </p>
+                <Link
+                  href="/community"
+                  className="bg-brand-primary mt-4 inline-flex h-10 items-center rounded-xl px-3 text-xs font-bold text-white"
+                >
+                  Join Community
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+        <p className="text-brand-secondary/40 mt-4 text-xs leading-5">
+          /profile is your private account and lifetime summary. /u/username is
+          a limited member-facing Community profile.
+        </p>
       </section>
 
       <section className="mt-8">

@@ -15,6 +15,7 @@ export const config = {
     "/calendar/:path*",
     "/trends/:path*",
     "/community/:path*",
+    "/u/:path*",
     "/profile/:path*",
     "/device/:path*",
     "/t/:path*",

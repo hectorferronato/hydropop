@@ -38,7 +38,11 @@ const secondaryNavigationItems: readonly NavigationItem[] = [
 ];
 
 function isActivePath(pathname: string, href: Route): boolean {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return (
+    pathname === href ||
+    pathname.startsWith(`${href}/`) ||
+    (href === "/community" && pathname.startsWith("/u/"))
+  );
 }
 
 export function DesktopNavigation() {

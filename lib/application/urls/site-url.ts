@@ -52,3 +52,11 @@ export function buildNfcUrl(siteUrl: string, identifier: string): string {
   const origin = normalizeSiteUrl(siteUrl);
   return `${origin}/t/${encodeURIComponent(identifier)}`;
 }
+
+export function buildCommunityProfileUrl(
+  siteUrl: string,
+  username: string,
+): string {
+  const origin = normalizeSiteUrl(siteUrl);
+  return `${origin}/u/${encodeURIComponent(username)}`;
+}

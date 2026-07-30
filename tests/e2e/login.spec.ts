@@ -115,7 +115,13 @@ test("protects the settings route and preserves it through login", async ({
 });
 
 test("protects every new private application destination", async ({ page }) => {
-  for (const destination of ["/trends?range=30", "/community", "/profile"]) {
+  for (const destination of [
+    "/trends?range=30",
+    "/community",
+    "/profile",
+    "/settings/community",
+    "/u/hector.ferronato",
+  ]) {
     await page.goto(destination);
 
     await expect(

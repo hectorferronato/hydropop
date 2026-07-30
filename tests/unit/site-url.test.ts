@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  buildCommunityProfileUrl,
   buildNfcUrl,
   getCanonicalSiteUrl,
   normalizeSiteUrl,
@@ -31,6 +32,15 @@ describe("canonical site URL", () => {
     expect(
       buildNfcUrl("https://hydropop-lake.vercel.app", "example-code"),
     ).toBe("https://hydropop-lake.vercel.app/t/example-code");
+  });
+
+  it("builds the canonical Community profile URL", () => {
+    expect(
+      buildCommunityProfileUrl(
+        "https://hydropop-lake.vercel.app",
+        "hector.ferronato",
+      ),
+    ).toBe("https://hydropop-lake.vercel.app/u/hector.ferronato");
   });
 
   it("removes trailing slashes without producing a double slash", () => {

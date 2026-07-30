@@ -18,6 +18,11 @@ describe("sanitizeLoginDestination", () => {
     );
     expect(sanitizeLoginDestination("/community")).toBe("/community");
     expect(sanitizeLoginDestination("/profile")).toBe("/profile");
+    expect(sanitizeLoginDestination("/u/hector.ferronato")).toBe(
+      "/u/hector.ferronato",
+    );
+    expect(sanitizeLoginDestination("/u/bea_1")).toBe("/u/bea_1");
+    expect(sanitizeLoginDestination("/u/lais-zamper")).toBe("/u/lais-zamper");
     expect(sanitizeLoginDestination("/t/Abcdefghijklmnop_1234")).toBe(
       "/t/Abcdefghijklmnop_1234",
     );
@@ -28,6 +33,8 @@ describe("sanitizeLoginDestination", () => {
     "//attacker.example/path",
     "/auth/login",
     "/api/v1/private",
+    "/u/.hidden",
+    "/u/hector/extra",
     "/today\\@attacker.example",
   ])("rejects unsafe destination %s", (destination) => {
     expect(sanitizeLoginDestination(destination)).toBe("/today");
