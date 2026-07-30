@@ -105,22 +105,23 @@ describe("Community UI and access contracts", () => {
     );
   });
 
-  it("uses a temporary RPC-only overlay without editing generated types", () => {
-    const overlay = source(
-      "lib/infrastructure/supabase/community-pending.types.ts",
-    );
-    const rpc = source("lib/infrastructure/supabase/community-rpc.ts");
+  it("uses the standard server client and generated Community RPC types", () => {
+    const adapter = source("lib/infrastructure/supabase/community.ts");
+    const generated = source("lib/infrastructure/supabase/database.types.ts");
 
-    expect(overlay).toContain("Temporary type overlay");
-    expect(overlay).toContain("Functions:");
-    expect(overlay).not.toContain("hydration_events:");
-    expect(rpc).toContain("CommunityPendingDatabase");
+    expect(adapter).toContain('import { createClient } from "./server"');
+    expect(adapter).not.toContain("createCommunityRpcClient");
+    expect(adapter).not.toContain("CommunityPendingDatabase");
+    expect(generated).toContain("check_community_username_availability:");
+    expect(generated).toContain("get_community_member_summary:");
+    expect(generated).toContain("get_my_community_profile:");
+    expect(generated).toContain("list_community_member_summaries:");
+    expect(generated).toContain("save_community_profile:");
   });
 
   it("does not introduce a service-role key", () => {
     const files = [
       "app/(private)/community/actions.ts",
-      "lib/infrastructure/supabase/community-rpc.ts",
       "lib/infrastructure/supabase/community.ts",
     ];
 

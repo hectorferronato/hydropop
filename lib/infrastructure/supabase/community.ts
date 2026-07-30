@@ -11,7 +11,7 @@ import {
   type CommunityUsernameAvailability,
 } from "@/lib/contracts/community";
 
-import { createCommunityRpcClient } from "./community-rpc";
+import { createClient } from "./server";
 
 export class CommunityReadError extends Error {
   constructor(resource: "directory" | "member" | "profile") {
@@ -42,8 +42,8 @@ export function toCommunityErrorCode(
 }
 
 export async function getMyCommunityProfile(): Promise<CommunityProfile | null> {
-  const supabase = await createCommunityRpcClient();
-  const { data, error } = await supabase.rpc("get_my_community_profile", {});
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_community_profile");
 
   if (error) {
     logRpcError("profile read", error);
@@ -67,7 +67,7 @@ export async function getMyCommunityProfile(): Promise<CommunityProfile | null> 
 export async function checkCommunityUsername(
   username: string,
 ): Promise<CommunityUsernameAvailability> {
-  const supabase = await createCommunityRpcClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc(
     "check_community_username_availability",
     { p_username: username },
@@ -92,7 +92,7 @@ export async function saveCommunityProfile(input: {
   isVisible: boolean;
   username: string;
 }): Promise<CommunityProfile> {
-  const supabase = await createCommunityRpcClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("save_community_profile", {
     p_is_visible: input.isVisible,
     p_username: input.username,
@@ -116,12 +116,12 @@ export async function saveCommunityProfile(input: {
 export async function listCommunityMembers(
   search: string | null = null,
 ): Promise<CommunityMemberSummary[]> {
-  const supabase = await createCommunityRpcClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc(
     "list_community_member_summaries",
     {
       p_limit: 50,
-      p_search: search,
+      ...(search === null ? {} : { p_search: search }),
     },
   );
 
@@ -143,7 +143,7 @@ export async function listCommunityMembers(
 export async function getCommunityMember(
   username: string,
 ): Promise<CommunityMemberSummary | null> {
-  const supabase = await createCommunityRpcClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_community_member_summary", {
     p_username: username,
   });

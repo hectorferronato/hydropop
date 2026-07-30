@@ -64,6 +64,51 @@ export type Database = {
           },
         ]
       }
+      community_profiles: {
+        Row: {
+          display_name: string
+          is_visible: boolean
+          joined_at: string
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          display_name: string
+          is_visible?: boolean
+          joined_at?: string
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          display_name?: string
+          is_visible?: boolean
+          joined_at?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      community_username_reservations: {
+        Row: {
+          reserved_at: string
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          reserved_at?: string
+          user_id?: string | null
+          username: string
+        }
+        Update: {
+          reserved_at?: string
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       devices: {
         Row: {
           battery_percent: number | null
@@ -364,6 +409,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      build_community_member_summary: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      check_community_username_availability: {
+        Args: { p_username: string }
+        Returns: Json
+      }
+      community_member_daily_aggregate: {
+        Args: { p_end_date: string; p_start_date: string; p_user_id: string }
+        Returns: {
+          completed_bottles: number
+          goal_ml: number
+          hydration_day: string
+          intake_ml: number
+        }[]
+      }
       create_nfc_tag: {
         Args: {
           p_bottle_id: string
@@ -389,7 +451,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_community_member_summary: {
+        Args: { p_username: string }
+        Returns: Json
+      }
+      get_my_community_profile: { Args: never; Returns: Json }
       is_valid_timezone: { Args: { timezone_name: string }; Returns: boolean }
+      list_community_member_summaries: {
+        Args: { p_limit?: number; p_search?: string }
+        Returns: Json
+      }
       mark_nfc_tag_confirmed: {
         Args: { p_event_id: string; p_tag_id: string }
         Returns: string
@@ -446,6 +517,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_community_profile: {
+        Args: { p_is_visible: boolean; p_username: string }
+        Returns: Json
       }
       save_onboarding: {
         Args: {
