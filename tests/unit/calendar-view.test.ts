@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildCalendarWeeks,
   getCurrentWeekIndex,
+  getWeekIndexForDate,
+  visibleCalendarWeekRows,
 } from "@/lib/application/calendar/calendar-view";
 import { buildCalendarSummary } from "@/lib/application/hydration/hydration-projection";
 import type { HydrationEvent } from "@/lib/domain/hydration/event-types";
@@ -48,10 +50,14 @@ describe("calendar view", () => {
 
   it("identifies the week row containing today", () => {
     expect(getCurrentWeekIndex("2026-07", "2026-07-29")).toBe(4);
+    expect(getWeekIndexForDate("2026-07", "2026-07-12")).toBe(2);
+    expect(visibleCalendarWeekRows).toBe(2);
   });
 
   it("does not create a false current-week target in another month", () => {
     expect(getCurrentWeekIndex("2026-06", "2026-07-29")).toBeNull();
+    expect(getWeekIndexForDate("2026-07", "2026-07-99")).toBeNull();
+    expect(getWeekIndexForDate("2026-07", null)).toBeNull();
   });
 
   it("does not shift hydration into the UTC date around local midnight", () => {

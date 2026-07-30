@@ -2,6 +2,8 @@ import type { HydrationDaySummary } from "@/lib/domain/hydration/daily-summary";
 
 export type CalendarWeek = Array<HydrationDaySummary | null>;
 
+export const visibleCalendarWeekRows = 2;
+
 export function buildCalendarWeeks(
   month: string,
   days: readonly HydrationDaySummary[],
@@ -21,20 +23,31 @@ export function buildCalendarWeeks(
   );
 }
 
-export function getCurrentWeekIndex(
+export function getWeekIndexForDate(
   month: string,
-  currentDate: string,
+  date: string | null,
 ): number | null {
-  if (!currentDate.startsWith(`${month}-`)) {
+  if (!date || date.slice(0, 7) !== month) {
     return null;
   }
 
-  const day = Number(currentDate.slice(-2));
+  const day = Number(date.slice(-2));
   const firstWeekday = new Date(`${month}-01T00:00:00.000Z`).getUTCDay();
+  const [yearText, monthText] = month.split("-");
+  const numberOfDays = new Date(
+    Date.UTC(Number(yearText), Number(monthText), 0),
+  ).getUTCDate();
 
-  if (!Number.isInteger(day) || day < 1) {
+  if (!Number.isInteger(day) || day < 1 || day > numberOfDays) {
     return null;
   }
 
   return Math.floor((firstWeekday + day - 1) / 7);
+}
+
+export function getCurrentWeekIndex(
+  month: string,
+  currentDate: string,
+): number | null {
+  return getWeekIndexForDate(month, currentDate);
 }

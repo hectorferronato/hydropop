@@ -138,7 +138,11 @@ export default async function TrendsPage({
                         : ` (${Math.abs(change.percentage)}%).`
                     }`}
             </p>
-            <DailyIntakeChart days={trends.days} unit={unit} />
+            <DailyIntakeChart
+              currentDate={trends.currentDate}
+              days={trends.days}
+              unit={unit}
+            />
           </section>
 
           <div className="grid gap-5 lg:grid-cols-2">
@@ -255,6 +259,7 @@ export default async function TrendsPage({
                         : "Keep recording to build a goal comparison."}
                 </p>
                 <RollingAverageChart
+                  currentDate={trends.currentDate}
                   points={trends.rollingAverage}
                   unit={unit}
                 />

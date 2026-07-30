@@ -39,6 +39,27 @@ describe("calendar information architecture", () => {
     expect(grid).not.toContain("scrollIntoView");
   });
 
+  it("shows exactly two complete internally scrollable week rows", () => {
+    expect(grid).toContain('data-testid="calendar-weekday-header"');
+    expect(grid).toContain('data-testid="calendar-week-viewport"');
+    expect(grid).toContain("data-visible-week-rows={visibleCalendarWeekRows}");
+    expect(grid).toContain("--calendar-week-row-height:5rem");
+    expect(grid).toContain("var(--calendar-week-row-height)*2");
+    expect(grid).toContain("overflow-y-auto");
+    expect(grid).toContain("overflow-x-hidden");
+    expect(grid).toContain("snap-y");
+    expect(grid).toContain("Scroll for all");
+  });
+
+  it("keeps focused and selected dates visible inside the viewport", () => {
+    expect(grid).toContain("getWeekIndexForDate(month, selectedDate)");
+    expect(grid).toContain('scrollWeekIntoView(selectedWeekIndex, "nearest")');
+    expect(grid).toContain(
+      'onFocus={() => scrollWeekIntoView(weekIndex, "nearest")}',
+    );
+    expect(grid).toContain('scrollWeekIntoView(currentWeekIndex, "start")');
+  });
+
   it("restores today and leaves historical months at their normal top", () => {
     expect(grid).toContain(
       "href={`/calendar?month=${currentMonth}&day=${currentDate}`}",
@@ -46,6 +67,15 @@ describe("calendar information architecture", () => {
     expect(grid).toContain("onClick={scrollCurrentWeekToTop}");
     expect(grid).toContain("currentWeekIndex === null");
     expect(grid).toContain("scrollTo({ top: 0 })");
+  });
+
+  it("places selected-day details directly after the compact calendar", () => {
+    expect(page.indexOf("<CalendarGrid")).toBeLessThan(
+      page.indexOf("{selectedDay ? ("),
+    );
+    expect(page).toContain(
+      'className="border-brand-secondary/5 mt-5 rounded-[1.75rem]',
+    );
   });
 });
 
@@ -64,6 +94,20 @@ describe("trends, private profile, and community presentation", () => {
     expect(trends).toContain("No hydration recorded in this range");
     expect(charts).toContain('role="img"');
     expect(charts).toContain('className="sr-only"');
+  });
+
+  it("adds responsive direct labels without changing chart data", () => {
+    expect(charts).toContain("formatChartDateLabel(");
+    expect(charts).toContain("formatChartValueLabel(");
+    expect(charts).toContain("formatChartGoalLabel(");
+    expect(charts).toContain("getPriorityValueIndices(");
+    expect(charts).toContain("max-w-[20rem]");
+    expect(charts).toContain("max-w-[40rem]");
+    expect(charts).toContain("data-chart-day={day.date}");
+    expect(charts).toContain("data-rolling-point={point.date}");
+    expect(charts).toContain('data-latest-point={isLatest ? "true"');
+    expect(charts).toContain("H ${x} V ${y}");
+    expect(charts).toContain("date-effective goals");
   });
 
   it("keeps profile data private and preserves management routes", () => {
