@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { toSaveOnboardingArguments } from "@/lib/application/onboarding/save-onboarding";
+import { revalidateHydrationViews } from "@/lib/application/hydration/revalidate-hydration-views";
 import {
   applyBottleSettings,
   applyHydrationSettings,
@@ -67,7 +68,7 @@ async function persistSettings(input: SetupInput): Promise<boolean> {
 function revalidateSettingsViews(): void {
   revalidatePath("/settings");
   revalidatePath("/setup");
-  revalidatePath("/today");
+  revalidateHydrationViews();
 }
 
 export async function saveProfileSettings(

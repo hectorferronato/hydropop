@@ -114,6 +114,17 @@ test("protects the settings route and preserves it through login", async ({
   await expect(page).toHaveURL(/\/auth\/login\?next=%2Fsettings$/u);
 });
 
+test("protects every new private application destination", async ({ page }) => {
+  for (const destination of ["/trends?range=30", "/community", "/profile"]) {
+    await page.goto(destination);
+
+    await expect(
+      page.getByRole("heading", { name: "Sign in to HydroPOP" }),
+    ).toBeVisible();
+    await expect(page.locator('input[name="next"]')).toHaveValue(destination);
+  }
+});
+
 test("returns stable unauthenticated errors from hydration APIs", async ({
   request,
 }) => {

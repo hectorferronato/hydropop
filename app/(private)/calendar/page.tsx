@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 
 import { EventTimeline } from "@/components/hydration/event-timeline";
@@ -9,6 +8,8 @@ import { requireAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { getHydrationSnapshot } from "@/lib/infrastructure/supabase/hydration";
 import { createClient } from "@/lib/infrastructure/supabase/server";
 import { formatDisplayVolume } from "@/lib/units/volume";
+
+import { CalendarGrid } from "./calendar-grid";
 
 function readParameter(value: string | string[] | undefined): string | null {
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
@@ -56,17 +57,20 @@ export default async function CalendarPage({
   const snapshot = await getHydrationSnapshot(await createClient(), user.id);
   const parameters = await searchParams;
   const requestedMonth = readParameter(parameters.month);
-  const currentMonth = getDateInTimezone(
+  const currentDate = getDateInTimezone(
     snapshot.profile?.timezone ?? "America/New_York",
-  ).slice(0, 7);
+  );
+  const currentMonth = currentDate.slice(0, 7);
   const month = isMonth(requestedMonth) ? requestedMonth : currentMonth;
   const calendar = buildCalendarSummary(snapshot, month);
   const requestedDay = readParameter(parameters.day);
   const selectedDay =
     calendar.days.find((day) => day.date === requestedDay) ??
+    (month === currentMonth
+      ? calendar.days.find((day) => day.date === currentDate)
+      : null) ??
     calendar.days.find((day) => day.date === `${month}-01`) ??
     null;
-  const firstWeekday = new Date(`${month}-01T00:00:00.000Z`).getUTCDay();
 
   return (
     <>
@@ -76,79 +80,15 @@ export default async function CalendarPage({
         description="Each day is reconstructed from immutable effective events in your local timezone."
       />
 
-      <section className="mt-8 rounded-[2rem] bg-white/90 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-7">
-        <div className="flex items-center justify-between">
-          <Link
-            href={`/calendar?month=${moveMonth(month, -1)}`}
-            aria-label="Previous month"
-            className="border-brand-secondary/10 rounded-xl border px-3 py-2 text-sm font-bold"
-          >
-            ←
-          </Link>
-          <h2 className="text-brand-secondary text-lg font-bold">
-            {new Intl.DateTimeFormat("en-US", {
-              month: "long",
-              timeZone: "UTC",
-              year: "numeric",
-            }).format(new Date(`${month}-01T00:00:00.000Z`))}
-          </h2>
-          <Link
-            href={`/calendar?month=${moveMonth(month, 1)}`}
-            aria-label="Next month"
-            className="border-brand-secondary/10 rounded-xl border px-3 py-2 text-sm font-bold"
-          >
-            →
-          </Link>
-        </div>
-
-        <div className="mt-6 grid grid-cols-7 gap-1 text-center">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <span
-              key={day}
-              className="text-brand-secondary/35 py-2 text-[0.65rem] font-bold uppercase"
-            >
-              {day.slice(0, 1)}
-            </span>
-          ))}
-          {Array.from({ length: firstWeekday }, (_, index) => (
-            <span key={`empty-${index}`} />
-          ))}
-          {calendar.days.map((day) => {
-            const selected = day.date === selectedDay?.date;
-            const percentage = Math.min(100, day.goalPercentage ?? 0);
-
-            return (
-              <Link
-                key={day.date}
-                href={`/calendar?month=${month}&day=${day.date}`}
-                aria-label={`View ${day.date}`}
-                className={`relative flex min-h-16 flex-col items-center rounded-xl p-1.5 text-xs transition ${
-                  selected
-                    ? "bg-brand-primary text-white"
-                    : "hover:bg-brand-primary/5 text-brand-secondary"
-                }`}
-              >
-                <span className="font-bold">{Number(day.date.slice(-2))}</span>
-                <span
-                  className={`mt-2 h-1.5 w-full overflow-hidden rounded-full ${
-                    selected ? "bg-white/25" : "bg-brand-primary/10"
-                  }`}
-                >
-                  <span
-                    className={`block h-full rounded-full ${
-                      selected ? "bg-white" : "bg-brand-primary"
-                    }`}
-                    style={{ width: `${percentage}%` }}
-                  />
-                </span>
-                <span className="mt-1 text-[0.58rem] font-bold">
-                  {day.completedBottleCount || "—"}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+      <CalendarGrid
+        currentDate={currentDate}
+        currentMonth={currentMonth}
+        days={calendar.days}
+        month={month}
+        nextMonth={moveMonth(month, 1)}
+        previousMonth={moveMonth(month, -1)}
+        selectedDate={selectedDay?.date ?? null}
+      />
 
       {selectedDay ? (
         <section className="border-brand-secondary/5 mt-5 rounded-[1.75rem] border bg-white/80 p-5 sm:p-6">

@@ -29,6 +29,34 @@ export function CalendarIcon(props: IconProps) {
   );
 }
 
+export function TrendsIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...sharedProps} {...props}>
+      <path d="M4 19V9M10 19V5M16 19v-7M22 19V3" />
+      <path d="m3.5 13 6-4 6 2 6-6" />
+    </svg>
+  );
+}
+
+export function CommunityIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...sharedProps} {...props}>
+      <circle cx="8.3" cy="8.3" r="3" />
+      <circle cx="16.8" cy="9.3" r="2.4" />
+      <path d="M2.8 19c.5-3.4 2.3-5.2 5.5-5.2s5 1.8 5.5 5.2M14.2 14.7c.8-.6 1.7-.9 2.8-.9 2.5 0 3.9 1.4 4.2 4.2" />
+    </svg>
+  );
+}
+
+export function ProfileIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...sharedProps} {...props}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.7 20c.7-4.1 3.1-6.2 7.3-6.2s6.6 2.1 7.3 6.2" />
+    </svg>
+  );
+}
+
 export function DeviceIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...sharedProps} {...props}>

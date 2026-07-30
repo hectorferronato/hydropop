@@ -142,6 +142,32 @@ Every API derives identity from the verified Supabase session and returns a
 stable `{ data, error }` envelope. Raw Supabase and PostgreSQL errors are never
 returned to clients.
 
+## Application information architecture
+
+The primary mobile and desktop navigation contains Today, Calendar, Trends,
+Community, and Profile. Device and Settings remain private routes and are
+available from Profile; desktop also exposes them as secondary actions.
+Community is an honest static placeholder during the pilot and does not create
+public profiles or social data.
+
+Calendar opens to today in the profile's IANA timezone and scrolls only its date
+viewport so the current chronological week begins at the top. Trends and the
+private Profile summary are rendered on the server from immutable effective
+event history. They exclude reversals and reversed originals, retain snapshot
+event volumes, select each date's effective goal, and convert milliliters only
+for presentation.
+
+Trend ranges are 7, 30, or 90 local days, defaulting invalid input to 30. The
+eligible period starts at the later of the requested range and the first
+relevant event or goal. Goal rate uses eligible historical goal days. Current
+streak leaves an active-through-yesterday streak intact while today's local day
+is unfinished. Bottle timing counts only effective `bottle_completed` events
+and uses a circular clock average after three coherent samples. Rolling
+averages include zero-intake active days and clearly label partial windows.
+Profile lifetime volume follows daily projected totals; completed bottles count
+only effective `bottle_completed` events, and the daily average includes zero
+days from the first recorded hydration date through today.
+
 ## NFC behavior-validation prototype
 
 The Device area provisions and manages NFC tags for validating the future

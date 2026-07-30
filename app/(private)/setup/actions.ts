@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { sanitizeLoginDestination } from "@/lib/application/auth/login-destination";
+import { revalidateHydrationViews } from "@/lib/application/hydration/revalidate-hydration-views";
 import { toSaveOnboardingArguments } from "@/lib/application/onboarding/save-onboarding";
 import { parseSetupFormData } from "@/lib/contracts/setup";
 import { requireAllowedUser } from "@/lib/infrastructure/supabase/auth";
@@ -58,6 +59,6 @@ export async function saveSetup(
 
   revalidatePath("/setup");
   revalidatePath("/settings");
-  revalidatePath("/today");
+  revalidateHydrationViews();
   redirect(destination);
 }

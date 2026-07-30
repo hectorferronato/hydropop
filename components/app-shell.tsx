@@ -1,5 +1,9 @@
 import { Brand } from "./brand";
-import { DesktopNavigation, MobileNavigation } from "./app-navigation";
+import {
+  DesktopNavigation,
+  DesktopSecondaryNavigation,
+  MobileNavigation,
+} from "./app-navigation";
 import { FormSubmitButton } from "./form-submit-button";
 import { LogOutIcon } from "./icons";
 import { NavigationFeedbackProvider } from "./navigation-feedback";
@@ -31,6 +35,7 @@ export function AppShell({
         <aside className="border-brand-secondary/5 bg-brand-background/70 fixed inset-y-0 left-0 hidden w-64 border-r px-5 py-6 backdrop-blur-xl md:flex md:flex-col">
           <Brand />
           <DesktopNavigation />
+          <DesktopSecondaryNavigation />
           <div className="border-brand-secondary/5 mt-auto rounded-2xl border bg-white/70 p-3">
             <p className="text-brand-secondary/45 truncate px-3 text-xs font-medium">
               {userEmail}

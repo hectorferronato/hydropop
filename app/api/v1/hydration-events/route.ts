@@ -2,6 +2,7 @@ import { HydrationApplicationError } from "@/lib/contracts/api-response";
 import { apiFailure, apiSuccess } from "@/lib/application/http/api-route";
 import { getTodayDashboard } from "@/lib/application/hydration/get-today-dashboard";
 import { processHydrationEvent } from "@/lib/application/hydration/process-hydration-event";
+import { revalidateHydrationViews } from "@/lib/application/hydration/revalidate-hydration-views";
 import { getAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { createHydrationRpcClient } from "@/lib/infrastructure/supabase/hydration-rpc";
 import { createClient } from "@/lib/infrastructure/supabase/server";
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
       input,
     });
 
+    revalidateHydrationViews();
     return apiSuccess(result, result.duplicate ? 200 : 201);
   } catch (error) {
     if (error instanceof HydrationApplicationError) {

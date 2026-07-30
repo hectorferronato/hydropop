@@ -258,9 +258,16 @@ describe("NFC management and scan contracts", () => {
     expect(confirmationClient).not.toMatch(/useEffect\s*\(/u);
   });
 
-  it("invalidates Today and Calendar after confirmed completion", () => {
-    expect(completionRoute).toContain('revalidatePath("/today")');
-    expect(completionRoute).toContain('revalidatePath("/calendar")');
+  it("invalidates every hydration view after confirmed completion", () => {
+    const revalidation = readFileSync(
+      resolve(root, "lib/application/hydration/revalidate-hydration-views.ts"),
+      "utf8",
+    );
+
+    expect(completionRoute).toContain("revalidateHydrationViews()");
+    for (const path of ["/today", "/calendar", "/trends", "/profile"]) {
+      expect(revalidation).toContain(`"${path}"`);
+    }
   });
 
   it("reuses the authoritative hydration processor with no derived browser input", () => {

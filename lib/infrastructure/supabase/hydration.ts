@@ -19,7 +19,8 @@ export type HydrationProfile = Pick<
   | "target_completion_time"
   | "timezone"
   | "wake_time"
->;
+> &
+  Partial<Pick<Database["public"]["Tables"]["profiles"]["Row"], "created_at">>;
 
 export type HydrationBottle = Pick<
   Database["public"]["Tables"]["bottles"]["Row"],
@@ -115,7 +116,7 @@ export async function getHydrationSnapshot(
       supabase
         .from("profiles")
         .select(
-          "display_name, preferred_unit, target_completion_time, timezone, wake_time",
+          "created_at, display_name, preferred_unit, target_completion_time, timezone, wake_time",
         )
         .eq("id", userId)
         .maybeSingle(),

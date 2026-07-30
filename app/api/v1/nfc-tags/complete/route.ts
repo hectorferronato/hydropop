@@ -2,7 +2,7 @@ import { getTodayDashboard } from "@/lib/application/hydration/get-today-dashboa
 import { apiFailure, apiSuccess } from "@/lib/application/http/api-route";
 import { completeNfcBottle } from "@/lib/application/nfc/complete-nfc-bottle";
 import { resolveNfcScan } from "@/lib/application/nfc/resolve-nfc-scan";
-import { revalidatePath } from "next/cache";
+import { revalidateHydrationViews } from "@/lib/application/hydration/revalidate-hydration-views";
 import {
   HydrationApplicationError,
   NfcApplicationError,
@@ -69,8 +69,7 @@ export async function POST(request: Request) {
         await resolveNfcScan(dataSource, authentication.user.id, identifier),
     });
 
-    revalidatePath("/today");
-    revalidatePath("/calendar");
+    revalidateHydrationViews();
 
     return apiSuccess(result, result.duplicate ? 200 : 201);
   } catch (error) {

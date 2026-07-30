@@ -13,6 +13,11 @@ describe("sanitizeLoginDestination", () => {
     expect(sanitizeLoginDestination("/settings/bottle")).toBe(
       "/settings/bottle",
     );
+    expect(sanitizeLoginDestination("/trends?range=30")).toBe(
+      "/trends?range=30",
+    );
+    expect(sanitizeLoginDestination("/community")).toBe("/community");
+    expect(sanitizeLoginDestination("/profile")).toBe("/profile");
     expect(sanitizeLoginDestination("/t/Abcdefghijklmnop_1234")).toBe(
       "/t/Abcdefghijklmnop_1234",
     );

@@ -2,7 +2,7 @@ import type { Route } from "next";
 
 const defaultDestination = "/today";
 const privateRoutePattern =
-  /^\/(?:calendar|device|settings|setup|today)(?:\/.*)?$/u;
+  /^\/(?:calendar|community|device|profile|settings|setup|today|trends)(?:\/.*)?$/u;
 const nfcRoutePattern = /^\/t\/[^/?#]+$/u;
 
 function isAllowedPathname(pathname: string): boolean {
