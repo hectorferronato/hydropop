@@ -409,6 +409,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_pilot_nfc_tag: {
+        Args: { p_token_hash: string }
+        Returns: {
+          bottle_id: string
+          created_at: string
+          friendly_code: string | null
+          id: string
+          label: string | null
+          last_scanned_at: string | null
+          status: string
+          token_hash: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "nfc_tags"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       build_community_member_summary: {
         Args: { p_user_id: string }
         Returns: Json
@@ -533,6 +553,7 @@ export type Database = {
           p_bottle_typical_fill_ml?: number
           p_daily_goal_ml: number
           p_display_name: string
+          p_pilot_token_hash?: string
           p_preferred_unit: string
           p_target_completion_time: string
           p_timezone: string

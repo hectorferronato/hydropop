@@ -7,6 +7,7 @@ const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 const loginAction = read("app/auth/login/actions.ts");
 const setupAction = read("app/(private)/setup/actions.ts");
+const setupForm = read("app/(private)/setup/setup-form.tsx");
 const scanPage = read("app/t/[identifier]/page.tsx");
 const activationCard = read("app/t/[identifier]/pilot-activation-card.tsx");
 const activationRoute = read("app/api/v1/nfc-tags/pilot/activate/route.ts");
@@ -17,6 +18,9 @@ const nfcConfirmation = read("app/t/[identifier]/nfc-confirmation.tsx");
 const celebration = read("components/hydration-success-celebration.tsx");
 const preference = read("components/sound-effects-preference.tsx");
 const globalStyles = read("app/globals.css");
+const onboardingRpc = read("lib/infrastructure/supabase/onboarding-rpc.ts");
+const databaseTypes = read("lib/infrastructure/supabase/database.types.ts");
+const tokenSecurity = read("lib/application/nfc/token-security.ts");
 
 describe("pilot onboarding and recording UX contracts", () => {
   it("preserves /t/pilot through login, incomplete setup, and final redirect", () => {
@@ -28,9 +32,15 @@ describe("pilot onboarding and recording UX contracts", () => {
   });
 
   it("generates and hashes a pilot credential only on the server setup action", () => {
+    expect(setupAction).toContain('"use server"');
     expect(setupAction).toContain("issueNfcCredential");
     expect(setupAction).toContain("pilotTokenHash");
     expect(setupAction).not.toContain("rawToken");
+    expect(tokenSecurity).toContain('from "node:crypto"');
+    expect(tokenSecurity).toContain("randomBytes");
+    expect(tokenSecurity).toContain('createHash("sha256")');
+    expect(setupForm).not.toContain("pilotTokenHash");
+    expect(setupForm).not.toContain("p_pilot_token_hash");
   });
 
   it("keeps GET /t/pilot read-only and activation explicit", () => {
@@ -41,6 +51,22 @@ describe("pilot onboarding and recording UX contracts", () => {
     expect(activationCard).toContain("Activate pilot tag");
     expect(activationCard).toContain("submissionLockRef.current");
     expect(activationRoute).toContain('rpc("activate_pilot_nfc_tag"');
+    expect(activationRoute).toContain("export async function POST()");
+    expect(activationRoute).not.toContain("request.json()");
+    expect(activationCard).not.toContain("p_token_hash");
+  });
+
+  it("uses the linked generated RPC types without a pending overlay or overload", () => {
+    expect(onboardingRpc).toContain(
+      'import type { Database } from "./database.types"',
+    );
+    expect(onboardingRpc).toContain("createServerClient<Database>");
+    expect(onboardingRpc).not.toContain("PilotPendingDatabase");
+    expect(databaseTypes.match(/\bsave_onboarding:\s*\{/gu)).toHaveLength(1);
+    expect(
+      databaseTypes.match(/\bactivate_pilot_nfc_tag:\s*\{/gu),
+    ).toHaveLength(1);
+    expect(databaseTypes).toContain("p_pilot_token_hash?: string");
   });
 
   it("submits only semantic manual input from an accessible modal", () => {
