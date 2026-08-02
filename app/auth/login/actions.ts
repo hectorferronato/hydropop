@@ -9,7 +9,9 @@ import {
   parseAllowedEmails,
 } from "@/lib/application/auth/allowed-emails";
 import {
+  createSetupPath,
   createUnauthorizedPath,
+  isPilotNfcDestination,
   sanitizeLoginDestination,
 } from "@/lib/application/auth/login-destination";
 import { getOnboardingSnapshot } from "@/lib/infrastructure/supabase/onboarding";
@@ -87,11 +89,15 @@ export async function login(
   revalidatePath("/", "layout");
 
   if (onboardingState === "partial") {
-    redirect("/settings");
+    redirect(
+      isPilotNfcDestination(destination)
+        ? createSetupPath(destination, { completePartialSetup: true })
+        : "/settings",
+    );
   }
 
   if (onboardingState === "new") {
-    redirect("/setup");
+    redirect(createSetupPath(destination));
   }
 
   redirect(destination);

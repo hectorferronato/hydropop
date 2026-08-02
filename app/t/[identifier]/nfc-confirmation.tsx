@@ -4,7 +4,13 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ActionSpinner } from "@/components/action-feedback";
+import { HydrationSuccessCelebration } from "@/components/hydration-success-celebration";
+import {
+  completeHydrationFeedback,
+  prepareHydrationFeedback,
+} from "@/lib/application/celebration/hydration-feedback";
 import type { ApiResponse } from "@/lib/contracts/api-response";
+import { toNfcHydrationSuccessPayload } from "@/lib/contracts/hydration-success";
 import type { NfcCompletionResult } from "@/lib/contracts/nfc";
 import { formatDisplayVolume, type VolumeUnit } from "@/lib/units/volume";
 
@@ -93,6 +99,7 @@ export function NfcConfirmation({
       return;
     }
 
+    const preparedFeedback = prepareHydrationFeedback();
     submissionLockRef.current = true;
     const currentRequest =
       request?.action === action
@@ -133,7 +140,9 @@ export function NfcConfirmation({
         return;
       }
 
+      const success = toNfcHydrationSuccessPayload(payload.data);
       setResult(payload.data);
+      completeHydrationFeedback(preparedFeedback, success);
       setRecentWarning(false);
       setRequest(null);
     } catch {
@@ -147,20 +156,12 @@ export function NfcConfirmation({
   }
 
   if (result) {
+    const success = toNfcHydrationSuccessPayload(result);
+
     return (
-      <section
-        role="status"
-        className="mt-7 rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5 text-center"
-      >
-        <p className="text-xs font-bold tracking-[0.14em] text-emerald-700 uppercase">
-          {result.action === "half"
-            ? "Half bottle recorded"
-            : "Bottle recorded"}
-        </p>
-        <p className="text-brand-secondary mt-3 text-3xl font-bold">
-          +{formatDisplayVolume(result.creditedAmountMl, unit)} {unit}
-        </p>
-        <div className="mt-5 grid grid-cols-2 gap-3 text-left">
+      <section className="mt-7">
+        <HydrationSuccessCelebration result={success} unit={unit} />
+        <div className="mt-4 grid grid-cols-2 gap-3 text-left">
           <div className="min-w-0 rounded-2xl bg-white p-3">
             <p className="text-brand-secondary/40 text-[0.65rem] font-bold uppercase">
               Current total

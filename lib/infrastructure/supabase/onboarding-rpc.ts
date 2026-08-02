@@ -1,28 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-import type { SaveOnboardingArguments } from "@/lib/application/onboarding/save-onboarding";
-
+import type { PilotPendingDatabase } from "./pilot-pending.types";
 import { getPublicSupabaseConfig } from "./public-env";
-
-type OnboardingRpcDatabase = {
-  public: {
-    Tables: Record<never, never>;
-    Views: Record<never, never>;
-    Functions: {
-      save_onboarding: {
-        Args: SaveOnboardingArguments;
-        Returns: string;
-      };
-    };
-  };
-};
 
 export async function createOnboardingRpcClient() {
   const cookieStore = await cookies();
   const { publishableKey, url } = getPublicSupabaseConfig();
 
-  return createServerClient<OnboardingRpcDatabase>(url, publishableKey, {
+  return createServerClient<PilotPendingDatabase>(url, publishableKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

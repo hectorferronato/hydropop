@@ -15,6 +15,11 @@ export const apiErrorCodes = [
   "NFC_TAG_UNAVAILABLE",
   "NFC_CODE_UNAVAILABLE",
   "RECENT_COMPLETION",
+  "PRIMARY_BOTTLE_REQUIRED",
+  "PILOT_TAG_ACTIVATION_REQUIRED",
+  "PILOT_TAG_UNAVAILABLE",
+  "PILOT_TAG_CONFLICT",
+  "HYDRATION_WRITE_FAILED",
   "EVENT_TOO_OLD",
   "EVENT_IN_FUTURE",
   "INTERNAL_ERROR",
@@ -45,6 +50,15 @@ export const safeApiErrorMessages: Record<ApiErrorCode, string> = {
   NO_ACTIVE_GOAL: "Set an active hydration goal before logging hydration.",
   NO_PRIMARY_BOTTLE:
     "Choose an active primary bottle before logging hydration.",
+  PRIMARY_BOTTLE_REQUIRED:
+    "Choose an active primary bottle before activating the pilot tag.",
+  PILOT_TAG_ACTIVATION_REQUIRED:
+    "Activate your HydroPOP pilot tag before recording water.",
+  PILOT_TAG_CONFLICT:
+    "This account’s historical pilot tag cannot be reactivated automatically. Contact the pilot administrator.",
+  PILOT_TAG_UNAVAILABLE: "The HydroPOP pilot tag is unavailable.",
+  HYDRATION_WRITE_FAILED:
+    "HydroPOP could not record water. Please try again safely.",
   NFC_TAG_NOT_FOUND: "That NFC tag could not be found.",
   NFC_TAG_REVOKED: "That NFC tag has been revoked.",
   NFC_TAG_UNAVAILABLE: "This NFC tag is unavailable.",

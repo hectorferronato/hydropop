@@ -3,6 +3,11 @@ import { connection } from "next/server";
 
 import { PageHeader } from "@/components/page-header";
 import {
+  createSetupPath,
+  isPilotNfcDestination,
+  sanitizeLoginDestination,
+} from "@/lib/application/auth/login-destination";
+import {
   getFirstIncompleteSetupStep,
   getSetupPageDisposition,
 } from "@/lib/application/onboarding/onboarding-status";
@@ -16,7 +21,10 @@ import { SetupForm } from "./setup-form";
 export default async function SetupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string | string[] }>;
+  searchParams: Promise<{
+    mode?: string | string[];
+    next?: string | string[];
+  }>;
 }) {
   await connection();
 
@@ -24,8 +32,14 @@ export default async function SetupPage({
   const requestedMode = Array.isArray(parameters.mode)
     ? parameters.mode[0]
     : parameters.mode;
-  const setupPath =
-    requestedMode === "complete" ? "/setup?mode=complete" : "/setup";
+  const requestedNext = Array.isArray(parameters.next)
+    ? parameters.next[0]
+    : parameters.next;
+  const requestedDestination = sanitizeLoginDestination(requestedNext);
+  const isPilotSetup = isPilotNfcDestination(requestedDestination);
+  const setupPath = createSetupPath(requestedDestination, {
+    completePartialSetup: requestedMode === "complete",
+  });
   const user = await requireAllowedUser(setupPath);
   const supabase = await createClient();
   const snapshot = await getOnboardingSnapshot(supabase, user.id);
@@ -34,12 +48,14 @@ export default async function SetupPage({
     getSetupPageDisposition(snapshot.status, requestedMode) ===
     "redirectToSettings"
   ) {
-    redirect("/settings");
+    redirect(isPilotSetup ? requestedDestination : "/settings");
   }
 
-  const destination = snapshot.status.hasStartedConfiguration
-    ? "/settings"
-    : "/today";
+  const destination = isPilotSetup
+    ? requestedDestination
+    : snapshot.status.hasStartedConfiguration
+      ? "/settings"
+      : "/today";
   const initialValues = toSetupFormValues(snapshot, user.email);
   const supportedTimezones = Intl.supportedValuesOf("timeZone");
   const timezones = supportedTimezones.includes(initialValues.timezone)

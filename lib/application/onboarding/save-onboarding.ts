@@ -11,6 +11,7 @@ export type SaveOnboardingArguments = {
   p_daily_goal_ml: number;
   p_display_name: string;
   p_preferred_unit: "ml" | "oz";
+  p_pilot_token_hash?: string;
   p_target_completion_time: string;
   p_timezone: string;
   p_wake_time: string;
@@ -18,6 +19,7 @@ export type SaveOnboardingArguments = {
 
 export function toSaveOnboardingArguments(
   input: SetupInput,
+  options: { pilotTokenHash?: string } = {},
 ): SaveOnboardingArguments {
   const requiredArguments: SaveOnboardingArguments = {
     p_bottle_brand: input.bottleBrand,
@@ -39,5 +41,8 @@ export function toSaveOnboardingArguments(
     ...(input.bottleTypicalFillMl === null
       ? {}
       : { p_bottle_typical_fill_ml: input.bottleTypicalFillMl }),
+    ...(options.pilotTokenHash
+      ? { p_pilot_token_hash: options.pilotTokenHash }
+      : {}),
   };
 }

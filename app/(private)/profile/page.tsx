@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { FormSubmitButton } from "@/components/form-submit-button";
+import { SoundEffectsPreference } from "@/components/sound-effects-preference";
 import {
   DeviceIcon,
   DropIcon,
@@ -199,6 +200,8 @@ export default async function ProfilePage() {
           </p>
         ) : null}
       </section>
+
+      <SoundEffectsPreference />
 
       <section className="border-brand-secondary/5 mt-7 rounded-[1.75rem] border bg-white/85 p-5 sm:p-6">
         <div className="flex items-start gap-4">

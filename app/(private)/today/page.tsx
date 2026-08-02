@@ -10,6 +10,7 @@ import { createClient } from "@/lib/infrastructure/supabase/server";
 import { formatDisplayVolume } from "@/lib/units/volume";
 
 import { DevelopmentControls } from "./development-controls";
+import { RecordWater } from "./record-water";
 
 function formatVolume(volumeMl: number | null, unit: "ml" | "oz"): string {
   return volumeMl === null
@@ -112,6 +113,11 @@ export default async function TodayPage() {
             <p className="text-brand-secondary/55 mt-4 text-sm leading-6">
               {dashboard.coaching.message}
             </p>
+            <RecordWater
+              bottleName={dashboard.primaryBottle.name}
+              normalFillMl={dashboard.primaryBottle.normalFillMl}
+              unit={unit}
+            />
           </section>
 
           <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -59,3 +59,25 @@ export function createUnauthorizedPath(destination: string): Route {
 
   return `/auth/unauthorized?${parameters.toString()}` as Route;
 }
+
+export function isPilotNfcDestination(destination: string): boolean {
+  return String(sanitizeLoginDestination(destination)) === "/t/pilot";
+}
+
+export function createSetupPath(
+  destination: string,
+  options: { completePartialSetup?: boolean } = {},
+): Route {
+  const parameters = new URLSearchParams();
+
+  if (options.completePartialSetup) {
+    parameters.set("mode", "complete");
+  }
+
+  if (isPilotNfcDestination(destination)) {
+    parameters.set("next", "/t/pilot");
+  }
+
+  const query = parameters.toString();
+  return (query ? `/setup?${query}` : "/setup") as Route;
+}

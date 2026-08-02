@@ -130,3 +130,71 @@ a[data-navigation-pending="true"] {
   background: rgb(62 41 255 / 20%);
   color: #0f172a;
 }
+
+@keyframes hydropop-particle-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 1.75rem, 0) scale(0.5) rotate(0deg);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -4.5rem, 0) scale(1) rotate(150deg);
+  }
+}
+
+@keyframes hydropop-success-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  65% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hydration-particle {
+  position: absolute;
+  bottom: 22%;
+  width: 0.55rem;
+  height: 0.85rem;
+  border-radius: 999px;
+  background: var(--color-brand-primary);
+  animation: hydropop-particle-burst 1.05s ease-out both;
+}
+
+.hydration-particle:nth-child(2n) {
+  background: #10b981;
+}
+
+.hydration-particle:nth-child(3n) {
+  background: #f59e0b;
+}
+
+.hydration-particles--compact .hydration-particle {
+  width: 0.4rem;
+  height: 0.4rem;
+  animation-duration: 0.8s;
+  transform-origin: center;
+}
+
+.hydration-success-check {
+  animation: hydropop-success-pop 420ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hydration-particles {
+    display: none;
+  }
+
+  .hydration-success-check {
+    animation: none;
+    box-shadow: 0 0 0 0.4rem rgb(16 185 129 / 12%);
+  }
+}

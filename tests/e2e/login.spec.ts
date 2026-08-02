@@ -103,6 +103,18 @@ test("authenticates before resolving a friendly NFC code", async ({ page }) => {
   );
 });
 
+test("preserves the shared pilot destination through unauthenticated scan", async ({
+  page,
+}) => {
+  await page.goto("/t/pilot");
+
+  await expect(
+    page.getByRole("heading", { name: "Sign in to HydroPOP" }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/auth\/login\?next=%2Ft%2Fpilot$/u);
+  await expect(page.locator('input[name="next"]')).toHaveValue("/t/pilot");
+});
+
 test("protects the settings route and preserves it through login", async ({
   page,
 }) => {
@@ -162,6 +174,19 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
       },
     },
   );
+  const manualHydrationResponse = await request.post(
+    "/api/v1/hydration-events/manual",
+    {
+      data: {
+        action: "full",
+        idempotencyKey: "playwright-manual-event-key",
+        occurredAt: new Date().toISOString(),
+      },
+    },
+  );
+  const pilotActivationResponse = await request.post(
+    "/api/v1/nfc-tags/pilot/activate",
+  );
 
   expect(todayResponse.status()).toBe(401);
   expect(calendarResponse.status()).toBe(401);
@@ -169,6 +194,8 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
   expect(nfcListResponse.status()).toBe(401);
   expect(nfcCreateResponse.status()).toBe(401);
   expect(nfcCompletionResponse.status()).toBe(401);
+  expect(manualHydrationResponse.status()).toBe(401);
+  expect(pilotActivationResponse.status()).toBe(401);
   await expect(todayResponse.json()).resolves.toMatchObject({
     data: null,
     error: { code: "UNAUTHENTICATED" },

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createSetupPath,
   createLoginPath,
+  isPilotNfcDestination,
   sanitizeLoginDestination,
 } from "@/lib/application/auth/login-destination";
 
@@ -26,6 +28,7 @@ describe("sanitizeLoginDestination", () => {
     expect(sanitizeLoginDestination("/t/Abcdefghijklmnop_1234")).toBe(
       "/t/Abcdefghijklmnop_1234",
     );
+    expect(sanitizeLoginDestination("/t/pilot")).toBe("/t/pilot");
   });
 
   it.each([
@@ -44,5 +47,14 @@ describe("sanitizeLoginDestination", () => {
     expect(createLoginPath("/t/Abcdefghijklmnop_1234")).toBe(
       "/auth/login?next=%2Ft%2FAbcdefghijklmnop_1234",
     );
+  });
+
+  it("creates a safe pilot setup continuation without carrying arbitrary routes", () => {
+    expect(isPilotNfcDestination("/t/pilot")).toBe(true);
+    expect(createSetupPath("/t/pilot")).toBe("/setup?next=%2Ft%2Fpilot");
+    expect(createSetupPath("/t/pilot", { completePartialSetup: true })).toBe(
+      "/setup?mode=complete&next=%2Ft%2Fpilot",
+    );
+    expect(createSetupPath("https://attacker.example/t/pilot")).toBe("/setup");
   });
 });

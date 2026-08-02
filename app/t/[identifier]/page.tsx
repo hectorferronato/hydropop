@@ -16,6 +16,7 @@ import { createClient } from "@/lib/infrastructure/supabase/server";
 import { formatDisplayVolume } from "@/lib/units/volume";
 
 import { NfcConfirmation } from "./nfc-confirmation";
+import { PilotActivationCard } from "./pilot-activation-card";
 
 export const metadata: Metadata = {
   title: "Record one bottle",
@@ -60,9 +61,13 @@ export default async function NfcIdentifierPage({
   const onboarding = await getOnboardingSnapshot(supabase, user.id);
 
   if (!onboarding.isComplete) {
-    redirect(
-      onboarding.status.hasStartedConfiguration ? "/settings" : "/setup",
-    );
+    const setupParameters = new URLSearchParams({ next: destination });
+
+    if (onboarding.status.hasStartedConfiguration) {
+      setupParameters.set("mode", "complete");
+    }
+
+    redirect(`/setup?${setupParameters.toString()}` as Route);
   }
 
   const resolution = await resolveNfcScan(
@@ -72,6 +77,10 @@ export default async function NfcIdentifierPage({
   );
 
   if (!resolution) {
+    if (identifier.trim().toLowerCase() === "pilot") {
+      return <PilotActivationCard />;
+    }
+
     return <UnavailableNfcTag />;
   }
 
