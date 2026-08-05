@@ -132,6 +132,7 @@ test("protects every new private application destination", async ({ page }) => {
     "/community",
     "/profile",
     "/settings/community",
+    "/settings/notifications",
     "/u/hector.ferronato",
   ]) {
     await page.goto(destination);
@@ -141,6 +142,25 @@ test("protects every new private application destination", async ({ page }) => {
     ).toBeVisible();
     await expect(page.locator('input[name="next"]')).toHaveValue(destination);
   }
+});
+
+test("serves the installable PWA shell and offline fallback", async ({
+  request,
+}) => {
+  const manifestResponse = await request.get("/manifest.webmanifest");
+  const workerResponse = await request.get("/sw.js");
+  const offlineResponse = await request.get("/offline");
+
+  expect(manifestResponse.status()).toBe(200);
+  await expect(manifestResponse.json()).resolves.toMatchObject({
+    display: "standalone",
+    name: "HydroPOP",
+    start_url: "/today",
+  });
+  expect(workerResponse.status()).toBe(200);
+  expect(await workerResponse.text()).toContain('self.addEventListener("push"');
+  expect(offlineResponse.status()).toBe(200);
+  expect(await offlineResponse.text()).toContain("You’re offline");
 });
 
 test("returns stable unauthenticated errors from hydration APIs", async ({
@@ -187,6 +207,18 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
   const pilotActivationResponse = await request.post(
     "/api/v1/nfc-tags/pilot/activate",
   );
+  const pushRegistrationResponse = await request.post(
+    "/api/v1/push-subscriptions",
+    { data: {} },
+  );
+  const notificationPreferenceResponse = await request.put(
+    "/api/v1/notification-preferences",
+    { data: { paceRemindersEnabled: true } },
+  );
+  const testPushResponse = await request.post(
+    "/api/v1/push-notifications/test",
+    { data: { endpoint: "https://push.example.test/current" } },
+  );
 
   expect(todayResponse.status()).toBe(401);
   expect(calendarResponse.status()).toBe(401);
@@ -196,6 +228,9 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
   expect(nfcCompletionResponse.status()).toBe(401);
   expect(manualHydrationResponse.status()).toBe(401);
   expect(pilotActivationResponse.status()).toBe(401);
+  expect(pushRegistrationResponse.status()).toBe(401);
+  expect(notificationPreferenceResponse.status()).toBe(401);
+  expect(testPushResponse.status()).toBe(401);
   await expect(todayResponse.json()).resolves.toMatchObject({
     data: null,
     error: { code: "UNAUTHENTICATED" },

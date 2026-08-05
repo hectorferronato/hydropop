@@ -32,6 +32,12 @@ navigation, database migrations with row-level security, and test tooling.
      `https://hydropop-lake.vercel.app` in production. Do not add a trailing
      slash.
    - `ALLOWED_EMAILS`: comma-separated email addresses permitted to sign in.
+   - `NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY`: public VAPID application-server
+     key used only when a user explicitly enables a device.
+   - `WEB_PUSH_VAPID_PRIVATE_KEY`: server-only matching VAPID private key.
+   - `WEB_PUSH_SUBJECT`: a `mailto:` or HTTPS VAPID contact URI.
+   - `PUSH_WORKER_SECRET`: a server-only 64-character hexadecimal (256-bit)
+     scheduler secret. Store the same value in Supabase Vault.
 
 4. In the Supabase dashboard:
 
@@ -261,12 +267,49 @@ The hydration engine and immutable event remain identical; only the client
 transport changes. Browser-based NFC writing, Bluetooth, native mobile code,
 and a simulated electronic charm are not part of this phase.
 
+## PWA Web Push reminders
+
+HydroPOP registers one service worker at `/sw.js`. It provides an offline
+fallback and handles both pace and current-device test notifications. Permission
+is never requested during page load, login, NFC, or hydration recording; the
+user must opt in from `/settings/notifications`. iPhone and iPad users must open
+the installed Home Screen web app. Supported Android browsers may enable Push
+directly and can optionally install HydroPOP for the standalone experience.
+
+Generate one VAPID pair deliberately outside build/runtime:
+
+```bash
+pnpm exec web-push generate-vapid-keys --json
+```
+
+Generate the independent 256-bit worker secret with:
+
+```bash
+openssl rand -hex 32
+```
+
+Never commit either private value. Pace evaluation uses the member's IANA local
+date, persisted wake/target schedule, date-effective goal, active primary
+bottle, immutable snapshot event volumes, future-event exclusion, and the same
+on-track tolerance as Today. The pilot reminder window is 09:00–20:00 local;
+recent hydration suppresses reminders for 20 minutes, continued behind episodes
+repeat no sooner than 90 minutes, a new episode has a 45-minute global cooldown,
+and accepted pace deliveries are capped at four per local day.
+
+The Supabase Cron/pg_net setup is intentionally post-deployment. The placeholder
+template at `supabase/templates/push-reminders-cron.sql.example` stores the
+worker secret in Vault, invokes the Vercel POST worker every 15 minutes, verifies
+the job, and includes the explicit unschedule command. Do not run it until the
+migration, generated types, server environment, and production deployment are
+ready.
+
 ## Deployment
 
-The app is compatible with Vercel's Next.js runtime. Configure the same four
-environment variables for Preview and Production, using the appropriate site URL
-for each environment. No service-role or database secret is required for this
-foundation.
+The app is compatible with Vercel's Next.js runtime. Configure the Supabase,
+site, allowlist, and Web Push environment variables for Preview and Production,
+using the appropriate site URL for each environment. No service-role key is
+used; the internal worker uses the public Supabase client plus a narrow
+Vault-authenticated database interface.
 
 ## Linked database development
 

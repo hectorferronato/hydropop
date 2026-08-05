@@ -1,6 +1,10 @@
 export type HydrationStatus =
   "ahead" | "behind" | "goal-reached" | "not-configured" | "on-track";
 
+export function calculateHydrationToleranceMl(goalMl: number): number {
+  return Math.max(100, goalMl * 0.05);
+}
+
 export function calculateHydrationStatus({
   consumedMl,
   expectedMl,
@@ -22,7 +26,7 @@ export function calculateHydrationStatus({
     return "on-track";
   }
 
-  const toleranceMl = Math.max(100, goalMl * 0.05);
+  const toleranceMl = calculateHydrationToleranceMl(goalMl);
   const differenceMl = consumedMl - expectedMl;
 
   if (differenceMl > toleranceMl) {

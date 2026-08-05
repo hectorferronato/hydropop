@@ -25,10 +25,12 @@ const focusableSelector =
 
 export function RecordWater({
   bottleName,
+  initiallyOpen = false,
   normalFillMl,
   unit,
 }: {
   bottleName: string;
+  initiallyOpen?: boolean;
   normalFillMl: number;
   unit: VolumeUnit;
 }) {
@@ -37,12 +39,18 @@ export function RecordWater({
   const dialogRef = useRef<HTMLDivElement>(null);
   const submissionLockRef = useRef(false);
   const retryRequestRef = useRef<PendingRequest | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initiallyOpen);
   const [pendingAction, setPendingAction] =
     useState<HydrationRecordingSemantic | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [result, setResult] = useState<ManualHydrationResult | null>(null);
   const halfFillMl = Math.max(1, Math.round(normalFillMl / 2));
+
+  useEffect(() => {
+    if (initiallyOpen) {
+      router.replace("/today", { scroll: false });
+    }
+  }, [initiallyOpen, router]);
 
   useEffect(() => {
     if (!isOpen) {

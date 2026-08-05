@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
+import { PwaServiceWorker } from "@/components/pwa-service-worker";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,6 +11,16 @@ export const metadata: Metadata = {
   },
   description: "A calm, personal hydration companion.",
   applicationName: "HydroPOP",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "HydroPOP",
+  },
+  icons: {
+    apple: "/icons/hydropop-icon-192.png",
+    icon: "/icons/hydropop-icon-192.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -23,7 +35,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <PwaServiceWorker />
+      </body>
     </html>
   );
 }

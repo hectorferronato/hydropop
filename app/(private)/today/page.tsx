@@ -41,8 +41,24 @@ function formatCompletionTime(occurredAt: string, timezone: string): string {
   }).format(new Date(occurredAt));
 }
 
-export default async function TodayPage() {
+function readSearchValue(value: string | string[] | undefined): string | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    record?: string | string[];
+    source?: string | string[];
+  }>;
+}) {
   await connection();
+
+  const parameters = await searchParams;
+  const openRecordWater =
+    readSearchValue(parameters.record) === "1" &&
+    readSearchValue(parameters.source) === "push";
 
   const user = await requireAllowedUser("/today");
   const dashboard = await getTodayDashboard(
@@ -115,6 +131,7 @@ export default async function TodayPage() {
             </p>
             <RecordWater
               bottleName={dashboard.primaryBottle.name}
+              initiallyOpen={openRecordWater}
               normalFillMl={dashboard.primaryBottle.normalFillMl}
               unit={unit}
             />

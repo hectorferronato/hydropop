@@ -1,0 +1,40 @@
+-- HydroPOP hosted scheduler template (run manually only after deployment).
+-- Prerequisites: enable the Supabase Vault, pg_cron, and pg_net integrations.
+-- Replace both placeholders before running. Never commit the real values.
+
+select vault.create_secret(
+  'REPLACE_WITH_THE_SAME_256_BIT_PUSH_WORKER_SECRET_USED_BY_VERCEL',
+  'hydropop_push_worker_secret',
+  'Authenticates the hosted reminder scheduler to the Vercel worker and worker RPCs.'
+);
+
+select cron.schedule(
+  'hydropop-push-reminders',
+  '*/15 * * * *',
+  $job$
+    select net.http_post(
+      url := 'https://REPLACE_WITH_PRODUCTION_HOST/api/internal/push-reminders/run',
+      headers := pg_catalog.jsonb_build_object(
+        'Authorization',
+        'Bearer ' || (
+          select decrypted_secrets.decrypted_secret
+          from vault.decrypted_secrets
+          where decrypted_secrets.name = 'hydropop_push_worker_secret'
+          limit 1
+        ),
+        'Content-Type',
+        'application/json'
+      ),
+      body := '{}'::jsonb,
+      timeout_milliseconds := 10000
+    );
+  $job$
+);
+
+-- Confirm the job exists without exposing its bearer secret.
+select jobid, jobname, schedule, active
+from cron.job
+where jobname = 'hydropop-push-reminders';
+
+-- Rollback/disable command (run deliberately when required):
+-- select cron.unschedule('hydropop-push-reminders');

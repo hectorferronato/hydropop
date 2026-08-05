@@ -19,6 +19,8 @@ export const apiErrorCodes = [
   "PILOT_TAG_ACTIVATION_REQUIRED",
   "PILOT_TAG_UNAVAILABLE",
   "PILOT_TAG_CONFLICT",
+  "PUSH_CONFIGURATION_ERROR",
+  "PUSH_SUBSCRIPTION_NOT_FOUND",
   "HYDRATION_WRITE_FAILED",
   "EVENT_TOO_OLD",
   "EVENT_IN_FUTURE",
@@ -57,6 +59,10 @@ export const safeApiErrorMessages: Record<ApiErrorCode, string> = {
   PILOT_TAG_CONFLICT:
     "This account’s historical pilot tag cannot be reactivated automatically. Contact the pilot administrator.",
   PILOT_TAG_UNAVAILABLE: "The HydroPOP pilot tag is unavailable.",
+  PUSH_CONFIGURATION_ERROR:
+    "Push notifications are not configured for this environment.",
+  PUSH_SUBSCRIPTION_NOT_FOUND:
+    "This device does not have an active HydroPOP notification subscription.",
   HYDRATION_WRITE_FAILED:
     "HydroPOP could not record water. Please try again safely.",
   NFC_TAG_NOT_FOUND: "That NFC tag could not be found.",

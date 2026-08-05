@@ -32,6 +32,13 @@ function formatMemberSince(value: string | null): string {
 
 const managementLinks = [
   {
+    description: "Choose devices and opt in to supportive pace reminders.",
+    href: "/settings/notifications",
+    icon: SettingsIcon,
+    label: "Notification settings",
+    section: "Account",
+  },
+  {
     description: "Review or change your date-effective daily target.",
     href: "/settings/hydration",
     icon: DropIcon,
@@ -273,7 +280,7 @@ export default async function ProfilePage() {
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href as Route}
                 className="border-brand-secondary/5 flex min-h-20 items-center gap-4 rounded-2xl border bg-white/85 p-4"
               >
                 <span className="bg-brand-primary/8 text-brand-primary flex size-11 shrink-0 items-center justify-center rounded-2xl">
