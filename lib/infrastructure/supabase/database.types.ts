@@ -787,6 +787,10 @@ export type Database = {
         }
         Returns: string
       }
+      set_hydration_notification_preferences: {
+        Args: { p_pace_reminders_enabled: boolean }
+        Returns: Json
+      }
       update_nfc_tag: {
         Args: {
           p_bottle_id: string
