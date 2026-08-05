@@ -62,8 +62,8 @@ describe("Web Push subscription registration privilege fix", () => {
   });
 
   it("registers and upserts through an authenticated owner-scoped RPC", () => {
-    expect(registrationRoute).toContain(
-      'supabase.rpc("register_web_push_subscription"',
+    expect(registrationRoute).toMatch(
+      /supabase\.rpc\(\s*"register_web_push_subscription"/u,
     );
     expect(registrationFunction).toContain("security invoker");
     expect(registrationFunction).toContain("set search_path = ''");
@@ -77,6 +77,7 @@ describe("Web Push subscription registration privilege fix", () => {
     expect(registrationFunction).toContain(
       "where subscriptions.user_id = v_user_id",
     );
+    expect(registrationFunction).not.toMatch(/\bstrict\b/iu);
   });
 
   it("does not let callers choose an owner or mutate another user's conflict", () => {

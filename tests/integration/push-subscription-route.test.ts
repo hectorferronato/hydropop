@@ -22,13 +22,16 @@ const payload = {
   keys: { auth: "auth_token_123", p256dh: "public_key_material_123" },
 };
 
-function registrationRequest(body: unknown = payload) {
+function registrationRequest(
+  body: unknown = payload,
+  userAgent: string | null = "HydroPOP test browser",
+) {
+  const headers = new Headers({ "content-type": "application/json" });
+  if (userAgent !== null) headers.set("user-agent", userAgent);
+
   return new Request("https://hydropop.test/api/v1/push-subscriptions", {
     body: JSON.stringify(body),
-    headers: {
-      "content-type": "application/json",
-      "user-agent": "HydroPOP test browser",
-    },
+    headers,
     method: "POST",
   });
 }
@@ -55,10 +58,14 @@ describe("Push subscription registration route", () => {
     const response = await POST(registrationRequest());
 
     expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toEqual({
+    const responseBody = await response.json();
+    expect(responseBody).toEqual({
       data: { registered: true },
       error: null,
     });
+    expect(JSON.stringify(responseBody)).not.toContain(payload.endpoint);
+    expect(JSON.stringify(responseBody)).not.toContain(payload.keys.auth);
+    expect(JSON.stringify(responseBody)).not.toContain(payload.keys.p256dh);
     expect(doubles.rpc).toHaveBeenCalledWith("register_web_push_subscription", {
       p_auth: payload.keys.auth,
       p_endpoint: payload.endpoint,
@@ -72,6 +79,36 @@ describe("Push subscription registration route", () => {
     expect(serializedCall).not.toContain("user_id");
     expect(serializedCall).not.toContain("userId");
     expect(serializedCall).not.toContain("endpoint_hash");
+  });
+
+  it("preserves NULL when expiration and User-Agent are absent", async () => {
+    const response = await POST(registrationRequest(payload, null));
+
+    expect(response.status).toBe(201);
+    expect(doubles.rpc).toHaveBeenCalledWith(
+      "register_web_push_subscription",
+      expect.objectContaining({
+        p_expires_at: null,
+        p_user_agent: null,
+      }),
+    );
+  });
+
+  it("preserves non-null expiration and User-Agent values", async () => {
+    const expirationTime = Date.UTC(2030, 0, 2, 3, 4, 5);
+    const userAgent = "HydroPOP production browser/1.0";
+    const response = await POST(
+      registrationRequest({ ...payload, expirationTime }, userAgent),
+    );
+
+    expect(response.status).toBe(201);
+    expect(doubles.rpc).toHaveBeenCalledWith(
+      "register_web_push_subscription",
+      expect.objectContaining({
+        p_expires_at: new Date(expirationTime).toISOString(),
+        p_user_agent: userAgent,
+      }),
+    );
   });
 
   it("rejects anonymous callers before opening a Supabase client", async () => {

@@ -713,6 +713,17 @@ export type Database = {
         Args: { p_worker_secret: string }
         Returns: boolean
       }
+      register_web_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_expires_at: string
+          p_p256dh: string
+          p_platform: string
+          p_user_agent: string
+        }
+        Returns: Json
+      }
       revoke_nfc_tag: {
         Args: { p_tag_id: string }
         Returns: {
