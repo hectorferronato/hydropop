@@ -10,6 +10,7 @@ import {
 } from "@/lib/contracts/push-notifications";
 import { getAllowedUser } from "@/lib/infrastructure/supabase/auth";
 import { createPushServerClient } from "@/lib/infrastructure/supabase/push-server";
+import { safeDatabaseDiagnostic } from "@/lib/infrastructure/supabase/safe-database-diagnostic";
 
 export const dynamic = "force-dynamic";
 
@@ -27,30 +28,24 @@ export async function POST(request: Request) {
   if (!parsed.success) return apiFailure("INVALID_INPUT");
 
   const userAgent = request.headers.get("user-agent")?.slice(0, 500) ?? null;
-  const endpointHash = hashPushEndpoint(parsed.data.endpoint);
   const supabase = await createPushServerClient();
-  const { error } = await supabase.from("web_push_subscriptions").upsert(
-    {
-      auth: parsed.data.keys.auth,
-      endpoint: parsed.data.endpoint,
-      endpoint_hash: endpointHash,
-      expires_at:
-        parsed.data.expirationTime === null
-          ? null
-          : new Date(parsed.data.expirationTime).toISOString(),
-      p256dh: parsed.data.keys.p256dh,
-      platform: describePushPlatform(userAgent ?? ""),
-      revoked_at: null,
-      user_agent: userAgent,
-      user_id: authentication.user.id,
-    },
-    { onConflict: "endpoint_hash" },
-  );
+  const { error } = await supabase.rpc("register_web_push_subscription", {
+    p_auth: parsed.data.keys.auth,
+    p_endpoint: parsed.data.endpoint,
+    p_expires_at:
+      parsed.data.expirationTime === null
+        ? null
+        : new Date(parsed.data.expirationTime).toISOString(),
+    p_p256dh: parsed.data.keys.p256dh,
+    p_platform: describePushPlatform(userAgent ?? ""),
+    p_user_agent: userAgent,
+  });
 
   if (error) {
-    console.error("[HydroPOP] Push subscription registration failed.", {
-      code: error.code,
-    });
+    console.error(
+      "[HydroPOP] Push subscription registration failed.",
+      safeDatabaseDiagnostic("register_web_push_subscription", error),
+    );
     return apiFailure("INTERNAL_ERROR");
   }
 
@@ -80,9 +75,10 @@ export async function DELETE(request: Request) {
     .is("revoked_at", null);
 
   if (error) {
-    console.error("[HydroPOP] Push subscription revocation failed.", {
-      code: error.code,
-    });
+    console.error(
+      "[HydroPOP] Push subscription revocation failed.",
+      safeDatabaseDiagnostic("revoke_web_push_subscription", error),
+    );
     return apiFailure("INTERNAL_ERROR");
   }
 

@@ -41,3 +41,6 @@ next-env.d.ts
 # Supabase CLI state
 supabase/.branches/
 supabase/.temp/
+.hydropop-push-secrets.txt
+.vercel
+.env*

@@ -6,6 +6,7 @@ import {
   notificationPreferenceInputSchema,
   pushSubscriptionInputSchema,
 } from "@/lib/contracts/push-notifications";
+import { safeDatabaseDiagnostic } from "@/lib/infrastructure/supabase/safe-database-diagnostic";
 
 const subscription = {
   endpoint: "https://push.example.test/subscription/abc",
@@ -66,5 +67,36 @@ describe("push notification browser contracts", () => {
       method: "POST",
     });
     await expect(readBoundedJson(request)).resolves.toBeNull();
+  });
+
+  it("logs useful database diagnostics without leaking Push credentials", () => {
+    expect(
+      safeDatabaseDiagnostic("register_web_push_subscription", {
+        code: "42501",
+        details: "RLS rejected the requested row",
+        hint: "Grant EXECUTE to the authenticated role",
+        message: "permission denied for table web_push_subscriptions",
+      }),
+    ).toEqual({
+      code: "42501",
+      details: "RLS rejected the requested row",
+      hint: "Grant EXECUTE to the authenticated role",
+      message: "permission denied for table web_push_subscriptions",
+      operation: "register_web_push_subscription",
+    });
+
+    const sensitive = safeDatabaseDiagnostic("register_web_push_subscription", {
+      code: "42501",
+      details:
+        "Failing row contains https://push.example.test/private-endpoint and public_key_material_12345678901234567890",
+      hint: "Bearer secret-material-that-must-never-appear",
+      message: "request contained p256dh credential material",
+    });
+
+    expect(sensitive.details).toBe("[redacted]");
+    expect(sensitive.hint).toBe("[redacted]");
+    expect(sensitive.message).toBe("[redacted]");
+    expect(JSON.stringify(sensitive)).not.toContain("private-endpoint");
+    expect(JSON.stringify(sensitive)).not.toContain("secret-material");
   });
 });

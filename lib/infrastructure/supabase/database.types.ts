@@ -284,6 +284,80 @@ export type Database = {
           },
         ]
       }
+      hydration_notification_preferences: {
+        Row: {
+          created_at: string
+          pace_reminders_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          pace_reminders_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          pace_reminders_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hydration_reminder_state: {
+        Row: {
+          behind_episode: number
+          evaluation_token: string | null
+          last_evaluated_at: string | null
+          last_pace_status: string | null
+          last_reminder_attempted_at: string | null
+          last_reminder_sent_at: string | null
+          local_date: string | null
+          outbox_sequence: number
+          pending_outbox_id: string | null
+          reminder_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          behind_episode?: number
+          evaluation_token?: string | null
+          last_evaluated_at?: string | null
+          last_pace_status?: string | null
+          last_reminder_attempted_at?: string | null
+          last_reminder_sent_at?: string | null
+          local_date?: string | null
+          outbox_sequence?: number
+          pending_outbox_id?: string | null
+          reminder_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          behind_episode?: number
+          evaluation_token?: string | null
+          last_evaluated_at?: string | null
+          last_pace_status?: string | null
+          last_reminder_attempted_at?: string | null
+          last_reminder_sent_at?: string | null
+          local_date?: string | null
+          outbox_sequence?: number
+          pending_outbox_id?: string | null
+          reminder_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hydration_reminder_state_pending_outbox_fkey"
+            columns: ["pending_outbox_id"]
+            isOneToOne: false
+            referencedRelation: "push_notification_outbox"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nfc_friendly_code_reservations: {
         Row: {
           friendly_code: string
@@ -404,6 +478,108 @@ export type Database = {
         }
         Relationships: []
       }
+      push_notification_outbox: {
+        Row: {
+          attempts: number
+          available_at: string
+          claim_token: string | null
+          claimed_at: string | null
+          created_at: string
+          dedupe_key: string
+          delivered_at: string | null
+          id: string
+          last_error_code: string | null
+          local_date: string
+          notification: Json
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          available_at?: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          dedupe_key: string
+          delivered_at?: string | null
+          id?: string
+          last_error_code?: string | null
+          local_date: string
+          notification: Json
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          available_at?: string
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          dedupe_key?: string
+          delivered_at?: string | null
+          id?: string
+          last_error_code?: string | null
+          local_date?: string
+          notification?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      web_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          endpoint_hash: string
+          expires_at: string | null
+          failure_count: number
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          platform: string | null
+          revoked_at: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          endpoint_hash: string
+          expires_at?: string | null
+          failure_count?: number
+          id?: string
+          last_success_at?: string | null
+          p256dh: string
+          platform?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          endpoint_hash?: string
+          expires_at?: string | null
+          failure_count?: number
+          id?: string
+          last_success_at?: string | null
+          p256dh?: string
+          platform?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -429,12 +605,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      apply_push_reminder_evaluation: {
+        Args: {
+          p_body?: string
+          p_evaluation_token: string
+          p_now?: string
+          p_pace_status: string
+          p_should_send: boolean
+          p_title?: string
+          p_user_id: string
+          p_worker_secret: string
+        }
+        Returns: Json
+      }
       build_community_member_summary: {
         Args: { p_user_id: string }
         Returns: Json
       }
       check_community_username_availability: {
         Args: { p_username: string }
+        Returns: Json
+      }
+      claim_push_notification_outbox: {
+        Args: { p_limit?: number; p_now?: string; p_worker_secret: string }
+        Returns: Json
+      }
+      claim_push_reminder_evaluations: {
+        Args: { p_limit?: number; p_now?: string; p_worker_secret: string }
         Returns: Json
       }
       community_member_daily_aggregate: {
@@ -445,6 +642,20 @@ export type Database = {
           hydration_day: string
           intake_ml: number
         }[]
+      }
+      complete_push_notification_outbox: {
+        Args: {
+          p_accepted_count: number
+          p_claim_token: string
+          p_error_code?: string
+          p_now?: string
+          p_outbox_id: string
+          p_permanent_failure_subscription_ids?: string[]
+          p_retry_at?: string
+          p_success_subscription_ids?: string[]
+          p_worker_secret: string
+        }
+        Returns: Json
       }
       create_nfc_tag: {
         Args: {
@@ -497,6 +708,10 @@ export type Database = {
           p_volume_ml?: number
         }
         Returns: Json
+      }
+      push_worker_is_authorized: {
+        Args: { p_worker_secret: string }
+        Returns: boolean
       }
       revoke_nfc_tag: {
         Args: { p_tag_id: string }
