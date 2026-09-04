@@ -131,6 +131,7 @@ test("protects every new private application destination", async ({ page }) => {
     "/trends?range=30",
     "/community",
     "/profile",
+    "/device/button",
     "/settings/community",
     "/settings/notifications",
     "/u/hector.ferronato",
@@ -194,6 +195,19 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
       },
     },
   );
+  const physicalDeviceListResponse = await request.get(
+    "/api/v1/physical-devices",
+  );
+  const deviceStatusResponse = await request.get("/api/v1/device/status");
+  const deviceHydrationResponse = await request.post(
+    "/api/v1/device/hydration",
+    {
+      data: {
+        action: "bottle_completed",
+        idempotencyKey: "playwright-device-event-key",
+      },
+    },
+  );
   const manualHydrationResponse = await request.post(
     "/api/v1/hydration-events/manual",
     {
@@ -226,6 +240,9 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
   expect(nfcListResponse.status()).toBe(401);
   expect(nfcCreateResponse.status()).toBe(401);
   expect(nfcCompletionResponse.status()).toBe(401);
+  expect(physicalDeviceListResponse.status()).toBe(401);
+  expect(deviceStatusResponse.status()).toBe(401);
+  expect(deviceHydrationResponse.status()).toBe(401);
   expect(manualHydrationResponse.status()).toBe(401);
   expect(pilotActivationResponse.status()).toBe(401);
   expect(pushRegistrationResponse.status()).toBe(401);
@@ -234,5 +251,9 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
   await expect(todayResponse.json()).resolves.toMatchObject({
     data: null,
     error: { code: "UNAUTHENTICATED" },
+  });
+  await expect(deviceStatusResponse.json()).resolves.toMatchObject({
+    error: { code: "UNAUTHORIZED" },
+    version: 1,
   });
 });

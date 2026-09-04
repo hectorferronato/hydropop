@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { evaluatePaceReminder } from "@/lib/domain/coaching/pace-reminder";
@@ -8,6 +9,7 @@ import {
   sendWebPush,
 } from "@/lib/infrastructure/push/send";
 import { createPushWorkerClient } from "@/lib/infrastructure/supabase/push";
+import { safeDatabaseDiagnostic } from "@/lib/infrastructure/supabase/safe-database-diagnostic";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -90,6 +92,16 @@ function workerResponse(body: object, status = 200): Response {
   });
 }
 
+function workerRpcDiagnostic(operation: string, error: PostgrestError | null) {
+  return error
+    ? safeDatabaseDiagnostic(operation, error)
+    : {
+        code: "INVALID_RPC_RESPONSE",
+        message: "Worker RPC response failed validation.",
+        operation,
+      };
+}
+
 export async function POST(request: Request) {
   let secret: string;
   try {
@@ -110,9 +122,10 @@ export async function POST(request: Request) {
   );
   const evaluations = evaluationBatchSchema.safeParse(evaluationData);
   if (evaluationError || !evaluations.success) {
-    console.error("[HydroPOP] Push evaluation claim failed.", {
-      code: evaluationError?.code ?? "INVALID_RPC_RESPONSE",
-    });
+    console.error(
+      "[HydroPOP] Push evaluation claim failed.",
+      workerRpcDiagnostic("claim_push_reminder_evaluations", evaluationError),
+    );
     return workerResponse({ error: "WORKER_FAILED" }, 500);
   }
 
@@ -151,9 +164,10 @@ export async function POST(request: Request) {
       },
     );
     if (error) {
-      console.error("[HydroPOP] Push evaluation commit failed.", {
-        code: error.code,
-      });
+      console.error(
+        "[HydroPOP] Push evaluation commit failed.",
+        safeDatabaseDiagnostic("apply_push_reminder_evaluation", error),
+      );
       continue;
     }
     if (
@@ -172,9 +186,10 @@ export async function POST(request: Request) {
   );
   const deliveries = deliveryBatchSchema.safeParse(deliveryData);
   if (deliveryError || !deliveries.success) {
-    console.error("[HydroPOP] Push delivery claim failed.", {
-      code: deliveryError?.code ?? "INVALID_RPC_RESPONSE",
-    });
+    console.error(
+      "[HydroPOP] Push delivery claim failed.",
+      workerRpcDiagnostic("claim_push_notification_outbox", deliveryError),
+    );
     return workerResponse({ error: "WORKER_FAILED" }, 500);
   }
 
@@ -228,9 +243,13 @@ export async function POST(request: Request) {
       },
     );
     if (completionError) {
-      console.error("[HydroPOP] Push delivery completion failed.", {
-        code: completionError.code,
-      });
+      console.error(
+        "[HydroPOP] Push delivery completion failed.",
+        safeDatabaseDiagnostic(
+          "complete_push_notification_outbox",
+          completionError,
+        ),
+      );
     } else if (acceptedCount > 0) {
       delivered += 1;
     }

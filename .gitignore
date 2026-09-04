@@ -44,3 +44,4 @@ supabase/.temp/
 .hydropop-push-secrets.txt
 .vercel
 .env*
+.hydropop-device-secrets.txt

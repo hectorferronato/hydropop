@@ -3,6 +3,7 @@ import {
   calculateHydrationStatus,
   type HydrationStatus,
 } from "./hydration-status";
+import { calculatePaceRecommendation } from "./pace-recommendation";
 import { formatDisplayVolume, parseVolumeUnit } from "@/lib/units/volume";
 
 export const PACE_REMINDER_POLICY = {
@@ -144,15 +145,12 @@ export function evaluatePaceReminder(
     return { body: null, paceStatus, shouldSend: false, title: null };
   }
 
-  const deficitMl = Math.max(
-    0,
-    (expected?.expectedMl ?? candidate.goalMl) - candidate.todayIntakeMl,
-  );
-  const normalFillMl = Math.max(1, candidate.normalFillMl);
-  const recommendationMl =
-    deficitMl >= normalFillMl * 0.75
-      ? normalFillMl
-      : Math.max(1, Math.round(normalFillMl / 2));
+  const recommendationMl = calculatePaceRecommendation({
+    consumedMl: candidate.todayIntakeMl,
+    expectedMl: expected?.expectedMl ?? null,
+    normalFillMl: candidate.normalFillMl,
+    status: paceStatus,
+  }).amountMl;
   const unit = parseVolumeUnit(candidate.preferredUnit);
   const amount = `${formatDisplayVolume(recommendationMl, unit)} ${unit}`;
 

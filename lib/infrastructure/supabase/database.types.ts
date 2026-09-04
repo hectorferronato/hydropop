@@ -114,12 +114,14 @@ export type Database = {
           battery_percent: number | null
           bottle_id: string | null
           created_at: string
+          credential_hash: string | null
           device_type: string
           firmware_version: string | null
           id: string
           last_seen_at: string | null
           last_synced_at: string | null
           name: string
+          revoked_at: string | null
           status: string
           updated_at: string
           user_id: string
@@ -128,12 +130,14 @@ export type Database = {
           battery_percent?: number | null
           bottle_id?: string | null
           created_at?: string
+          credential_hash?: string | null
           device_type: string
           firmware_version?: string | null
           id?: string
           last_seen_at?: string | null
           last_synced_at?: string | null
           name: string
+          revoked_at?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -142,12 +146,14 @@ export type Database = {
           battery_percent?: number | null
           bottle_id?: string | null
           created_at?: string
+          credential_hash?: string | null
           device_type?: string
           firmware_version?: string | null
           id?: string
           last_seen_at?: string | null
           last_synced_at?: string | null
           name?: string
+          revoked_at?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -682,19 +688,44 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_physical_button_device: {
+        Args: {
+          p_bottle_id: string
+          p_credential_hash: string
+          p_label: string
+        }
+        Returns: Json
+      }
       get_community_member_summary: {
         Args: { p_username: string }
         Returns: Json
       }
       get_my_community_profile: { Args: never; Returns: Json }
+      get_physical_button_status: {
+        Args: { p_api_secret: string; p_credential_hash: string }
+        Returns: Json
+      }
       is_valid_timezone: { Args: { timezone_name: string }; Returns: boolean }
       list_community_member_summaries: {
         Args: { p_limit?: number; p_search?: string }
         Returns: Json
       }
+      list_physical_button_devices: { Args: never; Returns: Json }
       mark_nfc_tag_confirmed: {
         Args: { p_event_id: string; p_tag_id: string }
         Returns: string
+      }
+      physical_button_api_is_authorized: {
+        Args: { p_api_secret: string }
+        Returns: boolean
+      }
+      physical_button_safe_metadata: {
+        Args: { p_device: Database["public"]["Tables"]["devices"]["Row"] }
+        Returns: Json
+      }
+      physical_button_status_state: {
+        Args: { p_device_id: string; p_now: string; p_user_id: string }
+        Returns: Json
       }
       process_hydration_event: {
         Args: {
@@ -712,6 +743,15 @@ export type Database = {
       push_worker_is_authorized: {
         Args: { p_worker_secret: string }
         Returns: boolean
+      }
+      record_physical_button_hydration: {
+        Args: {
+          p_api_secret: string
+          p_credential_hash: string
+          p_idempotency_key: string
+          p_occurred_at: string
+        }
+        Returns: Json
       }
       register_web_push_subscription: {
         Args: {
@@ -743,6 +783,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      revoke_physical_button_device: {
+        Args: { p_device_id: string }
+        Returns: Json
       }
       rotate_nfc_tag: {
         Args: { p_tag_id: string; p_token_hash: string }
@@ -816,6 +860,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      update_physical_button_device: {
+        Args: { p_bottle_id: string; p_device_id: string; p_label: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
@@ -834,12 +882,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -863,11 +911,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -888,11 +936,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -913,11 +961,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -930,11 +978,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

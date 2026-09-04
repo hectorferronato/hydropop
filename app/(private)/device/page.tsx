@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
@@ -52,8 +53,34 @@ export default async function DevicePage() {
       <PageHeader
         eyebrow="Connections"
         title="Device"
-        description="Validate the HydroPOP gesture with a secure NFC tag before the future physical charm exists."
+        description="Manage secure NFC and physical HydroPOP button connections."
       />
+
+      <section className="border-brand-secondary/5 mt-8 rounded-[2rem] border bg-white/90 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-8">
+        <div className="flex items-start gap-4">
+          <span className="bg-brand-primary/10 text-brand-primary flex size-12 shrink-0 items-center justify-center rounded-2xl">
+            <DeviceIcon className="size-6" />
+          </span>
+          <div>
+            <p className="text-brand-primary text-xs font-bold tracking-[0.14em] uppercase">
+              Physical button
+            </p>
+            <h2 className="text-brand-secondary mt-1 text-xl font-bold">
+              Secure hardware credentials
+            </h2>
+            <p className="text-brand-secondary/50 mt-2 max-w-2xl text-sm leading-6">
+              Assign a real HydroPOP button to one active bottle, copy its
+              dedicated token once, and revoke access at any time.
+            </p>
+          </div>
+        </div>
+        <Link
+          href={"/device/button" as Route}
+          className="bg-brand-primary mt-7 inline-flex h-12 items-center justify-center rounded-2xl px-5 text-sm font-bold text-white"
+        >
+          Manage physical buttons
+        </Link>
+      </section>
 
       <section className="border-brand-secondary/5 mt-8 rounded-[2rem] border bg-white/90 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:p-8">
         <div className="flex items-start gap-4">

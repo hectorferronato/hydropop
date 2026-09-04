@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import {
   clientHydrationEventTypes,
-  hydrationSources,
+  clientHydrationSources,
   type HydrationEvent,
 } from "@/lib/domain/hydration/event-types";
 
@@ -13,7 +13,7 @@ const hydrationEventInputBaseSchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(200),
   occurredAt: z.iso.datetime({ offset: true }),
   reversesEventId: z.uuid().nullable().optional(),
-  source: z.enum(hydrationSources),
+  source: z.enum(clientHydrationSources),
   volumeMl: z.int().safe().nullable().optional(),
 });
 

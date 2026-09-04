@@ -26,10 +26,20 @@ export const hydrationSources = [
   "simulator",
   "mobile",
   "charm",
+  "device",
   "admin",
 ] as const;
 
 export type HydrationSource = (typeof hydrationSources)[number];
+
+export const clientHydrationSources = [
+  "nfc",
+  "web",
+  "simulator",
+  "mobile",
+  "charm",
+  "admin",
+] as const satisfies readonly HydrationSource[];
 
 export type HydrationEvent = {
   bottleId: string;

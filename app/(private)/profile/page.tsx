@@ -60,6 +60,13 @@ const managementLinks = [
     section: "Devices",
   },
   {
+    description: "Create, assign, or revoke a physical HydroPOP button.",
+    href: "/device/button",
+    icon: DeviceIcon,
+    label: "Physical buttons",
+    section: "Devices",
+  },
+  {
     description: "Update your name, timezone, schedule, and display unit.",
     href: "/settings/profile",
     icon: ProfileIcon,

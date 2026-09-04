@@ -38,6 +38,10 @@ navigation, database migrations with row-level security, and test tooling.
    - `WEB_PUSH_SUBJECT`: a `mailto:` or HTTPS VAPID contact URI.
    - `PUSH_WORKER_SECRET`: a server-only 64-character hexadecimal (256-bit)
      scheduler secret. Store the same value in Supabase Vault.
+   - `PHYSICAL_DEVICE_RPC_SECRET`: an independent server-only 64-character
+     hexadecimal secret. Store the same value in Supabase Vault as
+     `hydropop_physical_device_rpc_secret`. It authenticates the narrow Next.js
+     device boundary to its database RPCs and is never sent to hardware.
 
 4. In the Supabase dashboard:
 
@@ -107,13 +111,14 @@ derives ownership from `auth.uid()`, and performs the changes atomically under
 RLS. Browser-facing volumes follow the user's preferred unit; persisted volumes
 remain integer milliliters.
 
-The everyday hydration gesture is one HydroPOP press immediately after the
-final sip of a normally filled bottle. A `bottle_completed` event immediately
-credits the bottle’s optional `typical_fill_ml`, falling back to `capacity_ml`
-when no typical fill is configured. That effective amount is copied into the
-immutable event’s `volume_ml` and metadata, so later bottle edits cannot change
-historical totals. Partial fills are not inferred; manual intake, signed
-adjustments, and reversals provide explicit corrections.
+The authoritative hydration semantic is one intentional completion action
+immediately after the final sip of a normally filled bottle. A
+`bottle_completed` event immediately credits the bottle’s optional
+`typical_fill_ml`, falling back to `capacity_ml` when no typical fill is
+configured. That effective amount is copied into the immutable event’s
+`volume_ml` and metadata, so later bottle edits cannot change historical
+totals. Partial fills are not inferred; manual intake, signed adjustments, and
+reversals provide explicit corrections.
 
 Legacy `fill_started`, `refill`, and `bottle_finished` rows remain supported by
 the projection layer for historical compatibility, but normal API clients can
@@ -257,15 +262,81 @@ physical tags:
 - Supabase Authentication URL configuration: site URL and permitted redirect
   URLs for `https://hydropop-lake.vercel.app`
 
-The future transport mapping is intentionally simple:
+The transport mapping is intentionally simple:
 
 - NFC confirmation → `bottle_completed`
 - NFC half confirmation → `manual_intake` with a server-calculated volume
-- Future charm short press → `bottle_completed`
+- physical-button intentional completion request → `bottle_completed`
+- physical-button short status request → read-only status, zero hydration
 
 The hydration engine and immutable event remain identical; only the client
 transport changes. Browser-based NFC writing, Bluetooth, native mobile code,
 and a simulated electronic charm are not part of this phase.
+
+## Physical button backend contract
+
+The Phase 3A backend reuses `devices` for `physical_button` records. Each button
+belongs to the authenticated creator, is assigned to one owned non-archived
+bottle, and has one 256-bit random base64url credential. Creation returns the
+raw credential once; only its lowercase SHA-256 digest is persisted. The
+credential cannot be read, rotated, or reactivated. Revocation preserves device
+and hydration history while immediately rejecting future device requests.
+
+Private management is available at `/device/button`. Browser requests may
+submit only the label and bottle ID; the server derives the owner from the
+verified Supabase session. The credential digest is excluded from direct table
+grants and from every management response.
+
+The physical button talks only to these Next.js HTTPS endpoints:
+
+- `POST /api/v1/device/hydration`
+- `GET /api/v1/device/status`
+
+Both require `Authorization: Bearer <DEVICE_TOKEN>`. The POST body is strictly:
+
+```json
+{
+  "action": "bottle_completed",
+  "idempotencyKey": "device-generated-event-key",
+  "occurredAt": "2026-09-04T16:00:00.000Z"
+}
+```
+
+`occurredAt` is optional. When omitted, Next.js supplies its actual server
+receipt time. A supplied time must be UTC, no more than five minutes ahead, and
+no more than seven days old. The button never submits an owner, bottle, volume,
+goal, source, or arbitrary event type.
+
+Firmware resolves press duration and cancellation before making a request. The
+backend never receives or interprets hold duration: a short status gesture uses
+GET and cannot write hydration, while only an already-resolved intentional
+completion sends the POST above.
+
+The database scopes each request key to the authenticated physical-device ID
+before calling the existing atomic `process_hydration_event` function. A lost
+response can therefore be retried safely: the first response says `created`, a
+replay says `existing`, and both refer to the same immutable event semantics.
+The authoritative processor resolves `typical_fill_ml ?? capacity_ml`, records
+source `device`, and keeps existing reversal and completed-bottle behavior.
+Next.js also authenticates to these two public-key database RPCs with the
+independent `PHYSICAL_DEVICE_RPC_SECRET` stored in Supabase Vault. This prevents
+a stored device digest from becoming a reusable direct-Supabase credential.
+Use `supabase/templates/physical-device-rpc-secret.sql.example` as the safe
+pre-deployment template; never place the real value in the repository.
+
+Success responses are unwrapped, compact version-1 JSON for firmware. They
+contain milliliter totals, the user's display unit, goal progress, pace status,
+pace delta, a `none`/`half`/`full` recommendation, server time, and the assigned
+bottle's normal completion amount. POST additionally returns `recordedMl` and
+`result`. No response includes account identifiers, bottle identifiers, NFC or
+Community data, history, or credentials. Status GET is read-only; successful
+POST is the only device operation that updates last-seen/sync metadata.
+
+Pace output is calculated in TypeScript by the same deterministic coaching
+functions used by Today and the Web Push reminder policy. Device hydration does
+not enqueue a push notification; later reminder evaluation naturally reads the
+new immutable event. A newly created event calls the same centralized hydration
+view revalidation as manual and NFC recording.
 
 ## PWA Web Push reminders
 
