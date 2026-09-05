@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ApiResponse } from "@/lib/contracts/api-response";
 import type { HydrationTimelineEvent } from "@/lib/domain/hydration/event-types";
@@ -33,6 +33,7 @@ export function RecordingActions({
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const lock = useRef(false);
+  const completedRef = useRef(false);
   const retry = useRef<{ body: string; key: string } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -48,6 +49,7 @@ export function RecordingActions({
     setAction(next);
     setMenuOpen(false);
     setError(null);
+    completedRef.current = false;
     setComplete(false);
     setUncertain(false);
     retry.current = null;
@@ -71,6 +73,22 @@ export function RecordingActions({
       )
       ?.focus();
   }, [dialogOpen, action]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function dismissOutside(event: PointerEvent) {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        !menu.current?.contains(target) &&
+        !trigger.current?.contains(target)
+      ) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", dismissOutside);
+    return () => document.removeEventListener("pointerdown", dismissOutside);
+  }, [menuOpen]);
 
   function close() {
     if (lock.current) return;
@@ -119,6 +137,7 @@ export function RecordingActions({
         );
         return;
       }
+      completedRef.current = true;
       setComplete(true);
       dialog.current?.close();
       // Focus survives removal of the row after refresh.
@@ -170,10 +189,16 @@ export function RecordingActions({
           role="menu"
           aria-label="Recording actions"
           className="absolute right-0 z-20 w-36 rounded-xl border border-black/10 bg-white p-1 shadow-lg"
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget)) setMenuOpen(false);
-          }}
           onKeyDown={(e) => {
+            // Dismiss keyboard navigation after focus has moved. Touch browsers
+            // can focus the history container before dispatching a menu click,
+            // so blur must not unmount the menu and swallow that activation.
+            if (e.key === "Tab") {
+              requestAnimationFrame(() => {
+                if (!menu.current?.contains(document.activeElement))
+                  setMenuOpen(false);
+              });
+            }
             const buttons = Array.from(
               e.currentTarget.querySelectorAll<HTMLButtonElement>("button"),
             );
@@ -251,7 +276,10 @@ export function RecordingActions({
         }}
         onClose={() => {
           setDialogOpen(false);
-          if (!complete) trigger.current?.focus();
+          // WebKit can dispatch close before React commits the completed state.
+          if (completedRef.current)
+            document.getElementById("hydration-history")?.focus();
+          else trigger.current?.focus();
         }}
       >
         <form onSubmit={submit} className="min-w-0 space-y-4">

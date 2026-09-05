@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { build } from "esbuild";
 
+// These component fixtures mock API responses directly; a registered app
+// service worker would route WebKit fetches around Playwright interception.
+test.use({ serviceWorkers: "block" });
+
 let script: string;
 test.beforeAll(async () => {
   const result = await build({
@@ -173,4 +177,42 @@ test("removal requires confirmation and an uncertain retry reuses its key", asyn
   await expect(
     page.getByRole("list", { name: "Hydration recordings" }),
   ).toBeFocused();
+});
+
+test("touch opens Edit and Remove, and dialogs reopen after cancellation", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, "Touch interaction requires a mobile context");
+  const options = page.getByRole("button", { name: /Recording options/u });
+  for (const action of ["Edit", "Edit", "Remove"]) {
+    await options.tap();
+    await page.getByRole("menuitem", { name: action, exact: true }).tap();
+    await expect(
+      page.getByRole("dialog", {
+        name: action === "Edit" ? "Edit recording" : "Remove recording?",
+      }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Cancel", exact: true }).tap();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
+  }
+});
+
+test("menu dismisses on an outside tap and on keyboard focus leaving", async ({
+  page,
+  isMobile,
+}) => {
+  const options = page.getByRole("button", { name: /Recording options/u });
+  if (isMobile) {
+    await options.tap();
+    await page.getByText("Bottle completed", { exact: true }).tap();
+    await expect(page.getByRole("menu")).not.toBeVisible();
+  }
+  await options.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(
+    page.getByRole("menuitem", { name: "Edit", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("menu")).not.toBeVisible();
 });

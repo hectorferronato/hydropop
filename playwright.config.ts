@@ -23,6 +23,11 @@ export default defineConfig({
       name: "mobile-chrome",
       use: { ...devices["Pixel 7"] },
     },
+    {
+      name: "mobile-safari",
+      testMatch: "recording-actions.spec.ts",
+      use: { ...devices["iPhone 13"] },
+    },
   ],
   webServer: {
     command: `env HYDROPOP_NEXT_DIST_DIR=.next-playwright pnpm dev --port ${testPort}`,
