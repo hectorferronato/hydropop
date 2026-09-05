@@ -1,0 +1,27 @@
+-- MANUAL ONLY, after the database migration and application deployment.
+-- The September 5 audit found both extensions absent. Never recreate/rotate Vault secrets here.
+create extension if not exists pg_cron with schema pg_catalog;
+create extension if not exists pg_net with schema extensions;
+
+do $repair$
+begin
+  if not exists (select 1 from vault.secrets where name = 'hydropop_push_worker_secret') then
+    raise exception 'Expected Vault entry is missing; configure it securely before scheduling';
+  end if;
+  if exists (select 1 from cron.job where jobname = 'hydropop-push-reminders') then
+    raise notice 'Job already exists: inspect its metadata before making any changes';
+    return;
+  end if;
+  perform cron.schedule('hydropop-push-reminders', '*/15 * * * *', $job$
+    select net.http_post(
+      url := 'https://hydropop-lake.vercel.app/api/internal/push-reminders/run',
+      headers := jsonb_build_object(
+        'Authorization', 'Bearer ' || (
+          select decrypted_secret from vault.decrypted_secrets
+          where name = 'hydropop_push_worker_secret' limit 1
+        ), 'Content-Type', 'application/json'
+      ), body := '{}'::jsonb, timeout_milliseconds := 10000
+    );
+  $job$);
+end;
+$repair$;

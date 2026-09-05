@@ -6,16 +6,23 @@ import {
 import { calculatePaceRecommendation } from "./pace-recommendation";
 import { formatDisplayVolume, parseVolumeUnit } from "@/lib/units/volume";
 
+export const REMINDER_FREQUENCIES = {
+  gentle: { behind: 90, onTrack: 240, ahead: 240, maxPerDay: 4 },
+  balanced: { behind: 60, onTrack: 180, ahead: 240, maxPerDay: 6 },
+  frequent: { behind: 45, onTrack: 120, ahead: 180, maxPerDay: 8 },
+} as const;
+export type ReminderFrequency = keyof typeof REMINDER_FREQUENCIES;
 export const PACE_REMINDER_POLICY = {
   cooldownMinutes: 45,
-  endHour: 20,
-  maxPerDay: 4,
   recentHydrationMinutes: 20,
-  repeatMinutes: 90,
-  startHour: 9,
+  repeatMinutes: 60,
+  maxPerDay: 6,
 } as const;
 
 export type PaceReminderCandidate = {
+  enabled?: boolean;
+  activeSubscriptionCount?: number;
+  frequency?: ReminderFrequency;
   behindEpisode: number;
   goalMl: number | null;
   lastHydrationAt: string | null;
@@ -34,24 +41,13 @@ export type PaceReminderCandidate = {
 
 export type PaceReminderDecision = {
   body: string | null;
-  paceStatus: HydrationStatus | "outside-window" | "recent-hydration";
+  paceStatus: HydrationStatus;
   shouldSend: boolean;
   title: string | null;
+  reason: string;
+  nextEligibleAt: string | null;
+  kind: "behind" | "on_track" | "ahead" | "none";
 };
-
-function localMinutes(now: Date, timezone: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    hour: "2-digit",
-    hour12: false,
-    minute: "2-digit",
-    timeZone: timezone,
-  }).formatToParts(now);
-  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
-  const minute = Number(
-    parts.find((part) => part.type === "minute")?.value ?? 0,
-  );
-  return (hour % 24) * 60 + minute;
-}
 
 function minutesSince(value: string | null, now: Date): number | null {
   if (!value) return null;
@@ -72,50 +68,10 @@ export function evaluatePaceReminder(
   candidate: PaceReminderCandidate,
   now: Date,
 ): PaceReminderDecision {
-  const minute = localMinutes(now, candidate.timezone);
-  if (
-    minute < PACE_REMINDER_POLICY.startHour * 60 ||
-    minute >= PACE_REMINDER_POLICY.endHour * 60
-  ) {
-    return {
-      body: null,
-      paceStatus: "outside-window",
-      shouldSend: false,
-      title: null,
-    };
-  }
-
-  if (
-    !candidate.goalMl ||
-    !candidate.normalFillMl ||
-    !candidate.wakeTime ||
-    !candidate.targetCompletionTime
-  ) {
-    return {
-      body: null,
-      paceStatus: "not-configured",
-      shouldSend: false,
-      title: null,
-    };
-  }
-
-  const recentHydrationMinutes = minutesSince(candidate.lastHydrationAt, now);
-  if (
-    recentHydrationMinutes !== null &&
-    recentHydrationMinutes >= 0 &&
-    recentHydrationMinutes < PACE_REMINDER_POLICY.recentHydrationMinutes
-  ) {
-    return {
-      body: null,
-      paceStatus: "recent-hydration",
-      shouldSend: false,
-      title: null,
-    };
-  }
-
+  const policy = REMINDER_FREQUENCIES[candidate.frequency ?? "balanced"];
   const expected = calculateExpectedIntake({
     date: candidate.localDate,
-    goalMl: candidate.goalMl,
+    goalMl: candidate.goalMl ?? 0,
     now,
     targetCompletionTime: candidate.targetCompletionTime,
     timezone: candidate.timezone,
@@ -126,40 +82,105 @@ export function evaluatePaceReminder(
     expectedMl: expected?.expectedMl ?? null,
     goalMl: candidate.goalMl,
   });
-
-  if (paceStatus !== "behind" || candidate.reminderCount >= 4) {
-    return { body: null, paceStatus, shouldSend: false, title: null };
+  const none = (
+    reason: string,
+    nextEligibleAt: string | null = null,
+  ): PaceReminderDecision => ({
+    body: null,
+    title: null,
+    shouldSend: false,
+    paceStatus,
+    reason,
+    nextEligibleAt,
+    kind: "none",
+  });
+  if (candidate.enabled === false) return none("notifications_disabled");
+  if (candidate.activeSubscriptionCount === 0)
+    return none("no_active_subscription");
+  if (!candidate.goalMl) return none("no_goal");
+  if (paceStatus === "goal-reached") return none("goal_complete");
+  if (!candidate.normalFillMl) return none("no_primary_bottle");
+  if (!expected) return none("no_schedule");
+  if (
+    now.getTime() < Date.parse(expected.wakeAt) ||
+    now.getTime() >= Date.parse(expected.targetAt)
+  ) {
+    return none(
+      "outside_notification_window",
+      now.getTime() < Date.parse(expected.wakeAt) ? expected.wakeAt : null,
+    );
   }
-
-  const lastAttemptOrSend = latestTimestamp(
+  if (candidate.reminderCount >= policy.maxPerDay) return none("daily_limit");
+  const quiet = paceStatus === "behind" ? 20 : 40;
+  const recent = minutesSince(candidate.lastHydrationAt, now);
+  const last = latestTimestamp(
     candidate.lastReminderAttemptedAt,
     candidate.lastReminderSentAt,
   );
-  const elapsed = minutesSince(lastAttemptOrSend, now);
-  const isNewEpisode = candidate.lastPaceStatus !== "behind";
-  const interval = isNewEpisode
-    ? PACE_REMINDER_POLICY.cooldownMinutes
-    : PACE_REMINDER_POLICY.repeatMinutes;
-
-  if (elapsed !== null && elapsed < interval) {
-    return { body: null, paceStatus, shouldSend: false, title: null };
-  }
-
+  const interval =
+    paceStatus === "behind"
+      ? candidate.lastPaceStatus !== "behind"
+        ? 45
+        : policy.behind
+      : paceStatus === "ahead"
+        ? policy.ahead
+        : policy.onTrack;
+  const cadenceAt =
+    Date.parse(last ?? expected.wakeAt) +
+    (last || paceStatus !== "behind" ? interval : 0) * 60_000;
+  const quietAt =
+    recent !== null && candidate.lastHydrationAt
+      ? Date.parse(candidate.lastHydrationAt) + quiet * 60_000
+      : 0;
+  const nextAt = new Date(Math.max(cadenceAt, quietAt)).toISOString();
+  const afterSend = new Date(
+    now.getTime() +
+      (paceStatus === "behind"
+        ? policy.behind
+        : paceStatus === "ahead"
+          ? policy.ahead
+          : policy.onTrack) *
+        60_000,
+  ).toISOString();
+  if (recent !== null && recent >= 0 && recent < quiet)
+    return none("hydrated_recently", nextAt);
+  if (now.getTime() < cadenceAt)
+    return none(
+      paceStatus === "behind"
+        ? "behind_cooldown"
+        : paceStatus === "ahead"
+          ? "ahead_cooldown"
+          : "on_track_cooldown",
+      nextAt,
+    );
+  if (paceStatus === "on-track" || paceStatus === "ahead")
+    return {
+      body:
+        paceStatus === "ahead"
+          ? "You're ahead of pace. Keep your water nearby."
+          : "You're on track today. Keep the momentum going.",
+      title: paceStatus === "ahead" ? "Looking good 💧" : "Nice pace 💧",
+      paceStatus,
+      shouldSend: true,
+      kind: paceStatus === "ahead" ? "ahead" : "on_track",
+      reason: "eligible",
+      nextEligibleAt: afterSend,
+    };
   const recommendationMl = calculatePaceRecommendation({
     consumedMl: candidate.todayIntakeMl,
-    expectedMl: expected?.expectedMl ?? null,
+    expectedMl: expected.expectedMl,
     normalFillMl: candidate.normalFillMl,
     status: paceStatus,
   }).amountMl;
   const unit = parseVolumeUnit(candidate.preferredUnit);
   const amount = `${formatDisplayVolume(recommendationMl, unit)} ${unit}`;
-
   return {
-    body: isNewEpisode
-      ? `A gentle check-in: about ${amount} now can help you move toward today’s pace.`
-      : `A quick water break of about ${amount} can bring you closer to today’s pace.`,
+    body: `A water break of about ${amount} can bring you closer to today's pace.`,
+    title: "Time for some water 💧",
     paceStatus,
     shouldSend: true,
-    title: isNewEpisode ? "HydroPOP check-in 💧" : "Still a little behind 💧",
+    kind: "behind",
+    reason: "eligible",
+    nextEligibleAt: afterSend,
   };
 }

@@ -23,6 +23,9 @@ export async function PUT(request: Request) {
   const { error } = await (
     await createPushServerClient()
   ).rpc("set_hydration_notification_preferences", {
+    ...(parsed.data.reminderFrequency
+      ? { p_reminder_frequency: parsed.data.reminderFrequency }
+      : {}),
     p_pace_reminders_enabled: parsed.data.paceRemindersEnabled,
   });
 

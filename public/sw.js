@@ -1,4 +1,4 @@
-const CACHE_NAME = "hydropop-shell-v1";
+const CACHE_NAME = "hydropop-shell-v2";
 const OFFLINE_URL = "/offline";
 const SAFE_TARGET = "/today?record=1&source=push";
 
@@ -29,7 +29,7 @@ self.addEventListener("activate", (event) => {
         ),
       ),
   );
-  self.clients.claim();
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener("fetch", (event) => {

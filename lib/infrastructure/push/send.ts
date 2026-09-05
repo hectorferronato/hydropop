@@ -16,6 +16,10 @@ export type StoredPushSubscription = {
 export function isValidStoredPushSubscription(
   subscription: StoredPushSubscription,
 ): boolean {
+  const publicKey = Buffer.from(subscription.p256dh, "base64url");
+  const authKey = Buffer.from(subscription.auth, "base64url");
+  if (publicKey.length !== 65 || publicKey[0] !== 4 || authKey.length !== 16)
+    return false;
   return pushSubscriptionInputSchema.safeParse({
     endpoint: subscription.endpoint,
     expirationTime: null,
@@ -36,6 +40,6 @@ export async function sendWebPush(
       keys: { auth: subscription.auth, p256dh: subscription.p256dh },
     },
     JSON.stringify(payload),
-    { TTL: 900, urgency: "normal" },
+    { TTL: 900, urgency: "normal", timeout: 10_000 },
   );
 }

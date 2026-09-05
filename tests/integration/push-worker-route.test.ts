@@ -164,3 +164,58 @@ describe("internal Push reminder worker route", () => {
     expect(mocks.sendWebPush).not.toHaveBeenCalled();
   });
 });
+
+describe("independent device delivery", () => {
+  it.each([404, 410, 503])(
+    "isolates push-service status %i from another device",
+    async (statusCode) => {
+      vi.clearAllMocks();
+      mocks.getPushWorkerSecret.mockReturnValue(workerSecret);
+      mocks.createPushWorkerClient.mockReturnValue({ rpc: mocks.rpc });
+      mocks.isValidStoredPushSubscription.mockReturnValue(true);
+      const successful = crypto.randomUUID();
+      const failing = crypto.randomUUID();
+      mocks.rpc
+        .mockResolvedValueOnce({ data: { candidates: [] }, error: null })
+        .mockResolvedValueOnce({
+          data: {
+            deliveries: [
+              {
+                id: crypto.randomUUID(),
+                claim_token: crypto.randomUUID(),
+                attempt: 1,
+                notification: {
+                  version: 1,
+                  kind: "pace-reminder",
+                  title: "Water",
+                  body: "Water break",
+                  tag: "hydropop-pace",
+                  target: "/today?record=1&source=push",
+                },
+                subscriptions: [successful, failing].map((id) => ({
+                  id,
+                  endpoint: "https://push.example.test/" + id,
+                  auth: "dummy-auth",
+                  p256dh: "dummy-key",
+                })),
+              },
+            ],
+          },
+          error: null,
+        })
+        .mockResolvedValueOnce({ data: { completed: true }, error: null });
+      mocks.sendWebPush
+        .mockResolvedValueOnce({})
+        .mockRejectedValueOnce({ statusCode });
+      expect((await POST(workerRequest())).status).toBe(200);
+      const completion = mocks.rpc.mock.calls[2]![1];
+      expect(mocks.sendWebPush).toHaveBeenCalledTimes(2);
+      expect(completion.p_accepted_count).toBe(1);
+      expect(completion.p_success_subscription_ids).toEqual([successful]);
+      expect(completion.p_permanent_failure_subscription_ids).toEqual(
+        statusCode === 503 ? [] : [failing],
+      );
+      expect(Boolean(completion.p_retry_at)).toBe(statusCode === 503);
+    },
+  );
+});

@@ -54,7 +54,10 @@ export const pushSubscriptionRemovalSchema = z
   .strict();
 
 export const notificationPreferenceInputSchema = z
-  .object({ paceRemindersEnabled: z.boolean() })
+  .object({
+    paceRemindersEnabled: z.boolean(),
+    reminderFrequency: z.enum(["gentle", "balanced", "frequent"]).optional(),
+  })
   .strict();
 
 export const testPushInputSchema = pushSubscriptionRemovalSchema;

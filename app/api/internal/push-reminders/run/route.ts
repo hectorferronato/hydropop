@@ -25,7 +25,10 @@ const candidateSchema = z.object({
   local_date: z.string(),
   normal_fill_ml: z.number().int().positive().nullable(),
   preferred_unit: z.unknown(),
-  reminder_count: z.number().int().min(0).max(4),
+  reminder_frequency: z
+    .enum(["gentle", "balanced", "frequent"])
+    .default("balanced"),
+  reminder_count: z.number().int().min(0).max(8),
   target_completion_time: z.string().nullable(),
   timezone: z.string(),
   today_intake_ml: z.number().nonnegative(),
@@ -133,6 +136,7 @@ export async function POST(request: Request) {
   for (const candidate of evaluations.data.candidates) {
     const decision = evaluatePaceReminder(
       {
+        frequency: candidate.reminder_frequency,
         behindEpisode: candidate.behind_episode,
         goalMl: candidate.goal_ml,
         lastHydrationAt: candidate.last_hydration_at,
@@ -158,6 +162,10 @@ export async function POST(request: Request) {
         p_now: now.toISOString(),
         p_pace_status: decision.paceStatus,
         p_should_send: decision.shouldSend,
+        p_reason: decision.reason,
+        ...(decision.nextEligibleAt
+          ? { p_next_eligible_at: decision.nextEligibleAt }
+          : {}),
         ...(decision.title ? { p_title: decision.title } : {}),
         p_user_id: candidate.user_id,
         p_worker_secret: secret,
@@ -222,12 +230,11 @@ export async function POST(request: Request) {
       }),
     );
 
-    const retryAt =
-      acceptedCount === 0 && transientFailure
-        ? new Date(
-            now.getTime() + Math.min(60, 2 ** delivery.attempt) * 60_000,
-          ).toISOString()
-        : undefined;
+    const retryAt = transientFailure
+      ? new Date(
+          now.getTime() + Math.min(60, 2 ** delivery.attempt) * 60_000,
+        ).toISOString()
+      : undefined;
     const { error: completionError } = await supabase.rpc(
       "complete_push_notification_outbox",
       {

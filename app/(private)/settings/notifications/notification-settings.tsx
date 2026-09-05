@@ -1,7 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import {
+  REMINDER_FREQUENCIES,
+  type ReminderFrequency,
+} from "@/lib/domain/coaching/pace-reminder";
 import { useEffect, useState } from "react";
 
+import { getPushFeatureState } from "@/lib/application/push/browser-support";
 import { ActionSpinner } from "@/components/action-feedback";
 import type { ApiResponse } from "@/lib/contracts/api-response";
 
@@ -49,12 +55,16 @@ function subscriptionInput(subscription: PushSubscription) {
 export function NotificationSettings({
   activeDeviceCount,
   initialEnabled,
+  initialFrequency,
   vapidPublicKey,
 }: {
   activeDeviceCount: number;
   initialEnabled: boolean;
+  initialFrequency: ReminderFrequency;
   vapidPublicKey: string | null;
 }) {
+  const router = useRouter();
+  const [frequency, setFrequency] = useState(initialFrequency);
   const [featureState, setFeatureState] = useState<FeatureState>("checking");
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
@@ -63,8 +73,11 @@ export function NotificationSettings({
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null,
   );
+  const [serverRegistered, setServerRegistered] = useState<boolean | null>(
+    null,
+  );
   const [enabled, setEnabled] = useState(initialEnabled);
-  const [deviceCount, setDeviceCount] = useState(activeDeviceCount);
+  const deviceCount = activeDeviceCount;
   const [pending, setPending] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,34 +87,40 @@ export function NotificationSettings({
 
     async function initialize() {
       await Promise.resolve();
-      const isSupported =
-        "serviceWorker" in navigator &&
-        "PushManager" in window &&
-        "Notification" in window;
-      if (cancelled) return;
-      if (!isSupported) {
-        setFeatureState("not-supported");
-        return;
-      }
-
-      const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
       const isAndroid = /Android/.test(navigator.userAgent);
       const isStandalone =
         window.matchMedia("(display-mode: standalone)").matches ||
         ("standalone" in navigator && navigator.standalone === true);
-      setPermission(Notification.permission);
-      setShowAndroidInstallGuidance(isAndroid && !isStandalone);
-      if (isIos && !isStandalone) {
-        setFeatureState("ios-install-required");
+      const detected = getPushFeatureState({
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        maxTouchPoints: navigator.maxTouchPoints,
+        standalone: isStandalone,
+        hasServiceWorker: "serviceWorker" in navigator,
+        hasPushManager: "PushManager" in window,
+        hasNotification: "Notification" in window,
+      });
+      if (cancelled) return;
+      if (detected !== "ready") {
+        setFeatureState(detected);
         return;
       }
-
+      setPermission(Notification.permission);
+      setShowAndroidInstallGuidance(isAndroid && !isStandalone);
       setFeatureState("ready");
       try {
         const registration = await navigator.serviceWorker.ready;
         const currentSubscription =
           await registration.pushManager.getSubscription();
         if (!cancelled) setSubscription(currentSubscription);
+        if (currentSubscription) {
+          const status = await apiRequest<{ registered: boolean }>(
+            "/api/v1/push-subscriptions/status",
+            "POST",
+            { endpoint: currentSubscription.endpoint },
+          );
+          if (!cancelled) setServerRegistered(status.registered);
+        } else if (!cancelled) setServerRegistered(false);
       } catch {
         if (!cancelled) {
           setError("This device’s notification state could not be read.");
@@ -156,8 +175,9 @@ export function NotificationSettings({
         paceRemindersEnabled: true,
       });
       setSubscription(nextSubscription);
+      setServerRegistered(true);
       setEnabled(true);
-      if (!existing) setDeviceCount((count) => count + 1);
+      router.refresh();
       setMessage("Reminders are enabled on this device.");
     } catch (caught) {
       setError(
@@ -180,7 +200,8 @@ export function NotificationSettings({
       });
       await subscription.unsubscribe();
       setSubscription(null);
-      setDeviceCount((count) => Math.max(0, count - 1));
+      setServerRegistered(false);
+      router.refresh();
       setMessage("Reminders were removed from this device only.");
     } catch (caught) {
       setError(
@@ -193,14 +214,20 @@ export function NotificationSettings({
     }
   }
 
-  async function setOverallEnabled(nextEnabled: boolean) {
+  async function setOverallEnabled(
+    nextEnabled: boolean,
+    nextFrequency = frequency,
+  ) {
     clearFeedback();
     setPending("preference");
     try {
       await apiRequest("/api/v1/notification-preferences", "PUT", {
         paceRemindersEnabled: nextEnabled,
+        reminderFrequency: nextFrequency,
       });
       setEnabled(nextEnabled);
+      setFrequency(nextFrequency);
+      router.refresh();
       setMessage(
         nextEnabled
           ? "Pace reminders resumed."
@@ -244,13 +271,28 @@ export function NotificationSettings({
           This device
         </p>
         <h2 className="text-brand-secondary mt-2 text-xl font-bold">
-          {subscription ? "Notifications enabled" : "Enable notifications"}
+          {subscription
+            ? "Browser subscription present"
+            : "Enable notifications"}
         </h2>
         <p className="text-brand-secondary/50 mt-2 text-sm leading-6">
           Permission is requested only when you press the enable button. Each
           browser or installed app is managed separately.
         </p>
 
+        <p className="mt-3 text-sm">
+          Server registration:{" "}
+          {serverRegistered === null
+            ? "Not checked"
+            : serverRegistered
+              ? "Active"
+              : "Not registered"}
+        </p>
+        {subscription && serverRegistered === false ? (
+          <p className="mt-2 text-sm">
+            Reconnect this device to repair reminder delivery.
+          </p>
+        ) : null}
         {featureState === "checking" ? (
           <p className="mt-5 text-sm">Checking this device…</p>
         ) : null}
@@ -303,6 +345,14 @@ export function NotificationSettings({
 
         {featureState === "ready" && permission !== "denied" ? (
           <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={pending !== null || !vapidPublicKey}
+              onClick={() => void enableThisDevice()}
+              className="min-h-11 rounded-2xl border px-4 text-sm font-bold"
+            >
+              {subscription ? "Reconnect this device" : "Register this device"}
+            </button>
             {subscription ? (
               <>
                 <button
@@ -358,10 +408,28 @@ export function NotificationSettings({
           Pace check-ins
         </h2>
         <p className="text-brand-secondary/50 mt-2 text-sm leading-6">
-          HydroPOP may send a supportive reminder when today’s effective intake
-          is behind your configured schedule. No reminder is sent simply because
-          you have not opened the app.
+          HydroPOP sends more check-ins when behind pace and occasional support
+          when on track or ahead, during your configured hydration schedule. No
+          reminder is sent simply because you have not opened the app.
         </p>
+        <label className="mt-4 block text-sm font-semibold">
+          Reminder frequency
+          <select
+            value={frequency}
+            disabled={pending !== null}
+            onChange={(event) =>
+              void setOverallEnabled(
+                enabled,
+                event.target.value as ReminderFrequency,
+              )
+            }
+            className="mt-2 block min-h-11 rounded-xl border px-3"
+          >
+            <option value="gentle">Gentle</option>
+            <option value="balanced">Balanced</option>
+            <option value="frequent">Frequent</option>
+          </select>
+        </label>
         <dl className="bg-brand-background mt-5 rounded-2xl p-4 text-sm">
           <div className="flex justify-between gap-4">
             <dt className="text-brand-secondary/50">Overall status</dt>
@@ -375,7 +443,9 @@ export function NotificationSettings({
           </div>
           <div className="mt-3 flex justify-between gap-4">
             <dt className="text-brand-secondary/50">Daily maximum</dt>
-            <dd className="text-brand-secondary font-bold">4 reminders</dd>
+            <dd className="text-brand-secondary font-bold">
+              {REMINDER_FREQUENCIES[frequency].maxPerDay} reminders
+            </dd>
           </div>
         </dl>
         <button

@@ -304,18 +304,21 @@ export type Database = {
         Row: {
           created_at: string
           pace_reminders_enabled: boolean
+          reminder_frequency: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           pace_reminders_enabled?: boolean
+          reminder_frequency?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           pace_reminders_enabled?: boolean
+          reminder_frequency?: string
           updated_at?: string
           user_id?: string
         }
@@ -324,12 +327,15 @@ export type Database = {
       hydration_reminder_state: {
         Row: {
           behind_episode: number
+          evaluated_pace_status: string | null
           evaluation_token: string | null
           last_evaluated_at: string | null
           last_pace_status: string | null
           last_reminder_attempted_at: string | null
           last_reminder_sent_at: string | null
+          last_suppression_reason: string | null
           local_date: string | null
+          next_eligible_at: string | null
           outbox_sequence: number
           pending_outbox_id: string | null
           reminder_count: number
@@ -338,12 +344,15 @@ export type Database = {
         }
         Insert: {
           behind_episode?: number
+          evaluated_pace_status?: string | null
           evaluation_token?: string | null
           last_evaluated_at?: string | null
           last_pace_status?: string | null
           last_reminder_attempted_at?: string | null
           last_reminder_sent_at?: string | null
+          last_suppression_reason?: string | null
           local_date?: string | null
+          next_eligible_at?: string | null
           outbox_sequence?: number
           pending_outbox_id?: string | null
           reminder_count?: number
@@ -352,12 +361,15 @@ export type Database = {
         }
         Update: {
           behind_episode?: number
+          evaluated_pace_status?: string | null
           evaluation_token?: string | null
           last_evaluated_at?: string | null
           last_pace_status?: string | null
           last_reminder_attempted_at?: string | null
           last_reminder_sent_at?: string | null
+          last_suppression_reason?: string | null
           local_date?: string | null
+          next_eligible_at?: string | null
           outbox_sequence?: number
           pending_outbox_id?: string | null
           reminder_count?: number
@@ -496,6 +508,7 @@ export type Database = {
       }
       push_notification_outbox: {
         Row: {
+          accepted_subscription_ids: string[]
           attempts: number
           available_at: string
           claim_token: string | null
@@ -512,6 +525,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          accepted_subscription_ids?: string[]
           attempts?: number
           available_at?: string
           claim_token?: string | null
@@ -528,6 +542,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          accepted_subscription_ids?: string[]
           attempts?: number
           available_at?: string
           claim_token?: string | null
@@ -625,8 +640,10 @@ export type Database = {
         Args: {
           p_body?: string
           p_evaluation_token: string
+          p_next_eligible_at?: string
           p_now?: string
           p_pace_status: string
+          p_reason?: string
           p_should_send: boolean
           p_title?: string
           p_user_id: string
@@ -725,6 +742,7 @@ export type Database = {
         Args: { p_api_secret: string; p_credential_hash: string }
         Returns: Json
       }
+      get_push_reminder_diagnostics: { Args: never; Returns: Json }
       is_valid_timezone: { Args: { timezone_name: string }; Returns: boolean }
       list_community_member_summaries: {
         Args: { p_limit?: number; p_search?: string }
@@ -852,7 +870,10 @@ export type Database = {
         Returns: string
       }
       set_hydration_notification_preferences: {
-        Args: { p_pace_reminders_enabled: boolean }
+        Args: {
+          p_pace_reminders_enabled: boolean
+          p_reminder_frequency?: string
+        }
         Returns: Json
       }
       update_nfc_tag: {
