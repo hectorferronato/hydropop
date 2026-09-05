@@ -42,6 +42,7 @@ export const clientHydrationSources = [
 ] as const satisfies readonly HydrationSource[];
 
 export type HydrationEvent = {
+  correctsEventId?: string | null;
   bottleId: string;
   createdAt: string;
   deviceId: string | null;

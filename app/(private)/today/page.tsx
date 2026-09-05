@@ -233,7 +233,7 @@ export default async function TodayPage({
 
             <section className="border-brand-secondary/5 rounded-[1.75rem] border bg-white/80 p-5">
               <h2 className="text-brand-secondary text-lg font-bold">
-                Event timeline
+                Recordings
               </h2>
               <EventTimeline
                 events={daySummary.timeline}

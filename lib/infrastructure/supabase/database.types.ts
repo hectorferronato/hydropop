@@ -178,6 +178,7 @@ export type Database = {
       hydration_events: {
         Row: {
           bottle_id: string
+          corrects_event_id: string | null
           created_at: string
           device_id: string | null
           event_type: string
@@ -193,6 +194,7 @@ export type Database = {
         }
         Insert: {
           bottle_id: string
+          corrects_event_id?: string | null
           created_at?: string
           device_id?: string | null
           event_type: string
@@ -208,6 +210,7 @@ export type Database = {
         }
         Update: {
           bottle_id?: string
+          corrects_event_id?: string | null
           created_at?: string
           device_id?: string | null
           event_type?: string
@@ -227,6 +230,13 @@ export type Database = {
             columns: ["bottle_id", "user_id"]
             isOneToOne: false
             referencedRelation: "bottles"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "hydration_events_correction_owner_fk"
+            columns: ["corrects_event_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "hydration_events"
             referencedColumns: ["id", "user_id"]
           },
           {
@@ -626,6 +636,16 @@ export type Database = {
       }
       build_community_member_summary: {
         Args: { p_user_id: string }
+        Returns: Json
+      }
+      change_hydration_recording: {
+        Args: {
+          p_action: string
+          p_event_id: string
+          p_idempotency_key: string
+          p_occurred_at?: string
+          p_volume_ml?: number
+        }
         Returns: Json
       }
       check_community_username_availability: {

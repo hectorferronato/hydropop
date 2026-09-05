@@ -91,6 +91,7 @@ export function toHydrationEvent(row: EventRow): HydrationEvent {
   }
 
   return {
+    correctsEventId: row.corrects_event_id ?? null,
     bottleId: row.bottle_id,
     createdAt: row.created_at,
     deviceId: row.device_id,

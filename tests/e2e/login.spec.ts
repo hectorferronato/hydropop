@@ -218,6 +218,15 @@ test("returns stable unauthenticated errors from hydration APIs", async ({
       },
     },
   );
+  const changeRecordingResponse = await request.post(
+    "/api/v1/hydration-events/change",
+    { data: { action: "remove" } },
+  );
+  const changeGetResponse = await request.get(
+    "/api/v1/hydration-events/change",
+  );
+  expect(changeRecordingResponse.status()).toBe(401);
+  expect(changeGetResponse.status()).toBe(405);
   const pilotActivationResponse = await request.post(
     "/api/v1/nfc-tags/pilot/activate",
   );

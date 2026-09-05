@@ -77,7 +77,7 @@ export default async function CalendarPage({
       <PageHeader
         eyebrow="Calendar"
         title="Hydration history"
-        description="Each day is reconstructed from immutable effective events in your local timezone."
+        description="Review your daily hydration and recordings in your local timezone."
       />
 
       <CalendarGrid
@@ -162,7 +162,7 @@ export default async function CalendarPage({
           </dl>
           <div className="mt-5">
             <h3 className="text-brand-secondary text-sm font-bold">
-              Event timeline
+              Recordings
             </h3>
             <EventTimeline
               events={selectedDay.timeline}
