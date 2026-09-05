@@ -98,7 +98,7 @@ describe("Web Push PWA and notification experience", () => {
     );
     expect(todayPage).toContain("initiallyOpen={openRecordWater}");
     expect(recordWater).toContain(
-      'router.replace("/today", { scroll: false })',
+      'window.history.replaceState(null, "", "/today")',
     );
 
     const deepLinkEffect = recordWater.slice(

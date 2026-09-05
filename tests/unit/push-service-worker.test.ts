@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it, vi } from "vitest";
-function worker() {
+function worker(
+  windows: {
+    url: string;
+    navigate: ReturnType<typeof vi.fn>;
+    focus: ReturnType<typeof vi.fn>;
+  }[] = [],
+) {
   const listeners = new Map<string, (event: unknown) => void>();
   const showNotification = vi.fn().mockResolvedValue(undefined);
   const openWindow = vi.fn().mockResolvedValue(undefined);
@@ -12,7 +18,7 @@ function worker() {
         listeners.set(name, handler),
       registration: { showNotification },
       location: { origin: "https://hydropop.test" },
-      clients: { matchAll: async () => [], openWindow },
+      clients: { matchAll: async () => windows, openWindow },
     },
   });
   return { listeners, showNotification, openWindow };
@@ -73,5 +79,48 @@ describe("push service worker execution", () => {
     });
     await Promise.all(pending);
     expect(w.openWindow).toHaveBeenCalledWith("https://hydropop.test/today");
+  });
+  it("navigates before focus and tolerates iOS focus rejection", async () => {
+    const focus = vi.fn().mockRejectedValue(new Error("inert client"));
+    const navigate = vi.fn().mockResolvedValue({ focus });
+    const w = worker([{ url: "https://hydropop.test/today", navigate, focus }]);
+    const pending: Promise<unknown>[] = [];
+    w.listeners.get("notificationclick")!({
+      notification: {
+        close: vi.fn(),
+        data: { target: "/today?record=1&source=push" },
+      },
+      waitUntil: (p: Promise<unknown>) => pending.push(p),
+    });
+    await Promise.all(pending);
+    expect(navigate).toHaveBeenCalledWith(
+      "https://hydropop.test/today?record=1&source=push",
+    );
+    expect(focus).toHaveBeenCalledOnce();
+    expect(navigate.mock.invocationCallOrder[0]).toBeLessThan(
+      focus.mock.invocationCallOrder[0]!,
+    );
+    expect(w.openWindow).not.toHaveBeenCalled();
+  });
+  it("falls back to opening a window when a suspended client cannot navigate", async () => {
+    const w = worker([
+      {
+        url: "https://hydropop.test/today",
+        navigate: vi.fn().mockRejectedValue(new Error("navigate failed")),
+        focus: vi.fn(),
+      },
+    ]);
+    const pending: Promise<unknown>[] = [];
+    w.listeners.get("notificationclick")!({
+      notification: {
+        close: vi.fn(),
+        data: { target: "/today?record=1&source=push" },
+      },
+      waitUntil: (p: Promise<unknown>) => pending.push(p),
+    });
+    await Promise.all(pending);
+    expect(w.openWindow).toHaveBeenCalledWith(
+      "https://hydropop.test/today?record=1&source=push",
+    );
   });
 });

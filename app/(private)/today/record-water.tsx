@@ -48,9 +48,10 @@ export function RecordWater({
 
   useEffect(() => {
     if (initiallyOpen) {
-      router.replace("/today", { scroll: false });
+      // Remove the consumed deep link without starting another server navigation.
+      window.history.replaceState(null, "", "/today");
     }
-  }, [initiallyOpen, router]);
+  }, [initiallyOpen]);
 
   useEffect(() => {
     if (!isOpen) {

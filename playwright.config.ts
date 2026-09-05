@@ -25,7 +25,7 @@ export default defineConfig({
     },
     {
       name: "mobile-safari",
-      testMatch: "recording-actions.spec.ts",
+      testMatch: ["recording-actions.spec.ts", "push-deep-link.spec.ts"],
       use: { ...devices["iPhone 13"] },
     },
   ],

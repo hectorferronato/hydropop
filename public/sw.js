@@ -1,4 +1,4 @@
-const CACHE_NAME = "hydropop-shell-v2";
+const CACHE_NAME = "hydropop-shell-v3";
 const OFFLINE_URL = "/offline";
 const SAFE_TARGET = "/today?record=1&source=push";
 
@@ -98,8 +98,19 @@ self.addEventListener("notificationclick", (event) => {
       .then(async (windows) => {
         for (const client of windows) {
           if (new URL(client.url).origin === self.location.origin) {
-            await client.focus();
-            return client.navigate(targetUrl);
+            try {
+              // Navigate before focusing: iOS may reject focus on a suspended client.
+              const navigated = await client.navigate(targetUrl);
+              if (!navigated) continue;
+              try {
+                await navigated.focus();
+              } catch {
+                // The navigation succeeded even if the OS declined focus.
+              }
+              return navigated;
+            } catch {
+              // A stale/inert client must not prevent opening a fresh window.
+            }
           }
         }
         return self.clients.openWindow(targetUrl);
