@@ -1,5 +1,7 @@
 # Hydration domain
 
+[Documentation hub](../../../docs/README.md) · [Product rules](../../../docs/hydration.md)
+
 This directory contains framework-free immutable event projection:
 
 - event and source types
@@ -41,7 +43,7 @@ project deterministically.
 
 NFC does not add a second hydration model. An authenticated NFC confirmation
 adapts a secure tag lookup into the same `bottle_completed` processor call with
-source `nfc`. Future charm short presses will map to the same event. Page loads
+source `nfc`. Intentional physical-button completion requests map to the same event; short status requests are read-only. Page loads
 are read-only; only explicit POST actions can append immutable hydration
 events.
 

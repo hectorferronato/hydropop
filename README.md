@@ -1,423 +1,77 @@
 # HydroPOP
 
-HydroPOP is a mobile-first hydration tracker built with Next.js, React, TypeScript,
-Tailwind CSS, and Supabase. The repository contains authentication, protected
-navigation, database migrations with row-level security, and test tooling.
+HydroPOP is a mobile-first hydration tracker for a private pilot. Record a full or
+half bottle from the web app or an NFC confirmation page; an authenticated
+physical button can record a completed bottle through the same backend. Today,
+Calendar, Trends, Community, and reminders all build on immutable hydration history.
 
-## Prerequisites
+**[Documentation hub](docs/README.md)** · **[Local setup](docs/getting-started.md)** ·
+**[Architecture](docs/architecture.md)** · **[Contributing](CONTRIBUTING.md)**
 
-- Node.js 20.9 or newer
-- pnpm 11
-- A linked Supabase project
+## What is in this repository?
 
-## Local setup
+| Area                   | Implementation                                                       | Guide                                          |
+| ---------------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
+| Web app                | Next.js App Router, React, strict TypeScript, Tailwind CSS           | [Frontend](docs/frontend.md)                   |
+| Data and authorization | Supabase Auth, PostgreSQL, RLS and transactional RPCs                | [Backend](docs/backend.md)                     |
+| Hydration              | Snapshot volumes, effective events, local days, goals and pace       | [Domain rules](docs/hydration.md)              |
+| NFC                    | Owner-scoped URLs, pilot activation, explicit full/half confirmation | [NFC](docs/nfc.md)                             |
+| Physical buttons       | Credential provisioning, read-only status, idempotent completion API | [Button integration](docs/physical-buttons.md) |
+| Web Push               | Opt-in subscriptions, adaptive cadence, transactional outbox, Cron   | [Notifications](docs/notifications.md)         |
+| Private Community      | Consent, usernames, visibility and limited member summaries          | [Community](docs/community.md)                 |
 
-1. Install dependencies:
+This repository owns the web application and button **backend contract**. Hardware
+firmware lives separately; pin mappings, provisioning transport and press-duration
+thresholds are not defined here. Source enums supporting historical transports do
+not imply that native apps, Bluetooth or every named transport is implemented.
 
-   ```bash
-   pnpm install
-   ```
+## Start developing
 
-2. Copy the environment template:
+Use Node.js 20.9 or newer and the package-manager version pinned in
+[package.json](package.json) (`pnpm@11.9.0` at this revision).
 
-   ```bash
-   cp .env.example .env.local
-   ```
-
-3. Fill in `.env.local`:
-
-   - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
-   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key.
-   - `NEXT_PUBLIC_SITE_URL`: `http://localhost:3000` locally and
-     `https://hydropop-lake.vercel.app` in production. Do not add a trailing
-     slash.
-   - `ALLOWED_EMAILS`: comma-separated email addresses permitted to sign in.
-   - `NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY`: public VAPID application-server
-     key used only when a user explicitly enables a device.
-   - `WEB_PUSH_VAPID_PRIVATE_KEY`: server-only matching VAPID private key.
-   - `WEB_PUSH_SUBJECT`: a `mailto:` or HTTPS VAPID contact URI.
-   - `PUSH_WORKER_SECRET`: a server-only 64-character hexadecimal (256-bit)
-     scheduler secret. Store the same value in Supabase Vault.
-   - `PHYSICAL_DEVICE_RPC_SECRET`: an independent server-only 64-character
-     hexadecimal secret. Store the same value in Supabase Vault as
-     `hydropop_physical_device_rpc_secret`. It authenticates the narrow Next.js
-     device boundary to its database RPCs and is never sent to hardware.
-
-4. In the Supabase dashboard:
-
-   - Keep email/password authentication enabled.
-   - Create each allowed user manually under Authentication → Users. The app has
-     no public sign-up flow and does not use a service-role key.
-   - Set the Auth site URL and allowed redirect URLs to the canonical
-     `https://hydropop-lake.vercel.app` deployment.
-
-5. Start the development server:
-
-   ```bash
-   pnpm dev
-   ```
-
-Never commit `.env.local`. The publishable key is intended for browser use, but
-all authorization must still be enforced by Supabase Row Level Security once
-application tables are introduced.
-
-## Commands
-
-| Command             | Purpose                                   |
-| ------------------- | ----------------------------------------- |
-| `pnpm dev`          | Run the Next.js development server        |
-| `pnpm build`        | Create a production build                 |
-| `pnpm start`        | Serve the production build                |
-| `pnpm lint`         | Run ESLint                                |
-| `pnpm typecheck`    | Run strict TypeScript checks              |
-| `pnpm test`         | Run Vitest unit tests                     |
-| `pnpm test:e2e`     | Run Playwright browser tests              |
-| `pnpm db:lint`      | Lint the linked public database schema    |
-| `pnpm db:types`     | Regenerate linked Supabase database types |
-| `pnpm format`       | Format supported files with Prettier      |
-| `pnpm format:check` | Check formatting without changing files   |
-
-Install the Playwright browser once before running end-to-end tests:
-
-```bash
-pnpm exec playwright install chromium
+```sh
+pnpm install --frozen-lockfile
+cp .env.example .env.local
+# Fill in the required values using the setup guide before starting.
+pnpm dev
 ```
 
-## Architecture
+Open `http://localhost:3000`. Use a dedicated hosted development Supabase project:
+local application requests write to whichever project its environment points to.
+[Setup and environment reference](docs/getting-started.md) covers authentication,
+optional integrations and the first successful recording.
 
-- `app/` contains App Router pages, route handlers, and private route layouts.
-- `components/` contains reusable application-shell and UI components.
-- `lib/domain/` reserves framework-free hydration and coaching logic.
-- `lib/application/` reserves use cases that orchestrate domain behavior.
-- `lib/infrastructure/supabase/` owns Supabase clients, auth verification, and
-  session refresh.
-- `lib/contracts/` reserves external API schemas.
-- `lib/units/` reserves strongly typed unit conversion helpers.
-- `supabase/` contains reproducible SQL migrations and development seed data.
-- `tests/` contains unit and end-to-end tests.
+## Engineering rules
 
-Authentication uses Supabase's SSR package and cookie-backed sessions. The root
-`proxy.ts` refreshes sessions and performs an optimistic redirect for protected
-routes. The private App Router layout independently verifies the JWT, fetches a
-fresh user record, and applies the server-only email allowlist before rendering.
-Login accepts email and password only. Safe internal destinations—including
-public NFC links under `/t/[identifier]`—are preserved through login and first-time
-setup without allowing external redirects.
+- Persist volumes as integer milliliters; convert ml/US fl oz only at boundaries.
+- Store timestamps as `timestamptz`; derive hydration dates in the member's IANA timezone.
+- Hydration events are immutable. Corrections append history rather than update/delete it.
+- GET requests never record water. Device events require stable idempotency keys.
+- Keep identity and authorization on the server and in RLS/RPCs. No service-role client.
+- Keep secrets out of Git, responses and logs. Only explicitly `NEXT_PUBLIC_` values belong in client code.
 
-The mobile-first setup wizard writes profile preferences, the current
-date-effective hydration goal, and the primary bottle through the
-`save_onboarding` PostgreSQL function. The function is security-invoker,
-derives ownership from `auth.uid()`, and performs the changes atomically under
-RLS. Browser-facing volumes follow the user's preferred unit; persisted volumes
-remain integer milliliters.
+[AGENTS.md](AGENTS.md) contains the repository's engineering instructions.
 
-The authoritative hydration semantic is one intentional completion action
-immediately after the final sip of a normally filled bottle. A
-`bottle_completed` event immediately credits the bottle’s optional
-`typical_fill_ml`, falling back to `capacity_ml` when no typical fill is
-configured. That effective amount is copied into the immutable event’s
-`volume_ml` and metadata, so later bottle edits cannot change historical
-totals. Partial fills are not inferred; manual intake, signed adjustments, and
-reversals provide explicit corrections.
+## Validate a change
 
-Legacy `fill_started`, `refill`, and `bottle_finished` rows remain supported by
-the projection layer for historical compatibility, but normal API clients can
-create only `bottle_completed`, `manual_intake`, `adjustment`, and
-`event_reversed`. New completion events have no bottle-cycle state and require
-no preceding fill.
-
-Reversals append an `event_reversed` audit row. The original row is never
-changed or deleted. Effective-history reconstruction excludes the reversed
-original from both credited intake and cycle state, while retaining both rows
-in the timeline. Retrying an event with the same user-scoped idempotency key
-returns the original successful event rather than inserting a duplicate.
-
-`occurred_at` determines event order and the user's IANA-local hydration date;
-`received_at` remains the server audit timestamp. The event API accepts offline
-events up to seven days old and five minutes of positive clock skew.
-
-The current versioned resources are:
-
-- `POST /api/v1/hydration-events`
-- `GET /api/v1/dashboard/today`
-- `GET /api/v1/calendar?month=YYYY-MM`
-- `GET` and `POST /api/v1/bottles`
-- `GET` and `PUT /api/v1/settings`
-- `GET` and `POST /api/v1/nfc-tags`
-- `PUT /api/v1/nfc-tags/[id]`
-- `POST /api/v1/nfc-tags/[id]/rotate`
-- `POST /api/v1/nfc-tags/[id]/revoke`
-- `POST /api/v1/nfc-tags/complete`
-
-Every API derives identity from the verified Supabase session and returns a
-stable `{ data, error }` envelope. Raw Supabase and PostgreSQL errors are never
-returned to clients.
-
-## Application information architecture
-
-The primary mobile and desktop navigation contains Today, Calendar, Trends,
-Community, and Profile. Device and Settings remain private routes and are
-available from Profile; desktop also exposes them as secondary actions.
-Community is an honest static placeholder during the pilot and does not create
-public profiles or social data.
-
-Calendar opens to today in the profile's IANA timezone and scrolls only its date
-viewport so the current chronological week begins at the top. Trends and the
-private Profile summary are rendered on the server from immutable effective
-event history. They exclude reversals and reversed originals, retain snapshot
-event volumes, select each date's effective goal, and convert milliliters only
-for presentation.
-
-Trend ranges are 7, 30, or 90 local days, defaulting invalid input to 30. The
-eligible period starts at the later of the requested range and the first
-relevant event or goal. Goal rate uses eligible historical goal days. Current
-streak leaves an active-through-yesterday streak intact while today's local day
-is unfinished. Bottle timing counts only effective `bottle_completed` events
-and uses a circular clock average after three coherent samples. Rolling
-averages include zero-intake active days and clearly label partial windows.
-Profile lifetime volume follows daily projected totals; completed bottles count
-only effective `bottle_completed` events, and the daily average includes zero
-days from the first recorded hydration date through today.
-
-## NFC behavior-validation prototype
-
-The Device area provisions and manages NFC tags for validating the future
-HydroPOP Charm gesture. The user scans the tag, reviews a mobile confirmation
-page, and explicitly chooses **Record one bottle** or **Record half**. Only an
-authenticated confirmation POST records hydration. Opening, refreshing,
-navigating back to, viewing Today, or cancelling never records hydration and
-never changes tag state.
-
-Every tag retains its secure identifier: 32 cryptographically random bytes
-encoded as a 43-character base64url string. Its URL is a secret locator.
-HydroPOP validates its format, stores only its lowercase SHA-256 digest, and
-resolves it through an exact unique-index lookup scoped to the authenticated
-owner. The raw token is returned only by create and rotate API responses and
-cannot be recovered from the database afterward. The pilot interface
-intentionally hides that advanced URL and shows only the friendly URL; existing
-secure URLs and the rotation API remain backward compatible.
-
-For the friends-and-family pilot, a tag may also have a memorable friendly code
-such as `bea-kitchen`. Friendly codes are normalized to lowercase and are not
-secret credentials. They resolve only after authentication and only among the
-signed-in owner’s active tags, so different users may independently use the
-same code. Codes are permanently reserved per user, including after a code
-change or revocation. This prevents an older physical tag URL from becoming
-valid again accidentally. Changing a friendly code invalidates its previous
-friendly URL immediately without rotating the secure identifier. Rotating the
-secure identifier does not change the friendly URL. Revocation disables both.
-
-Tag management supports:
-
-- creation for the authenticated user’s active primary bottle;
-- optional labels, friendly pilot codes, and bottle reassignment;
-- revocation without deleting the tag or hydration history;
-- last confirmed-use display through `last_scanned_at`.
-
-For this MVP, `last_scanned_at` means the timestamp of the latest successful
-confirmed full-bottle NFC completion. A read-only scan, half intake, View Today,
-or Cancel does not update it.
-
-The NFC completion adapter accepts only the identifier, semantic `full` or
-`half` action, occurrence timestamp, idempotency key, and an explicit
-rapid-repeat confirmation flag. It derives the user and bottle on the server
-and calls the same atomic hydration processor used by the normal event API. A
-full action creates `bottle_completed`; the processor derives and snapshots
-`typical_fill_ml ?? capacity_ml`. A half action reuses `manual_intake` and the
-server calculates `round((typical_fill_ml ?? capacity_ml) / 2)` in integer
-milliliters. The browser never supplies the user, bottle, or volume. Half intake
-adds hydration without increasing the completed-bottle count and remains
-reversible through immutable history. Reusing an idempotency key returns the
-original event. A second effective full completion for the same bottle within
-60 seconds shows a warning and requires another deliberate confirmation.
-
-While Today is visible and online, a small pilot controller checks for
-cross-device updates every five seconds. It pauses while hidden or offline,
-refreshes promptly after focus, visibility return, or local hydration changes,
-and prevents overlapping requests. This temporary polling can later be replaced
-by realtime subscriptions or device synchronization.
-
-### Writing and testing a physical NFC tag
-
-1. Create a tag with a friendly code under `/device/nfc`.
-2. Copy the displayed friendly NFC URL.
-3. Open an NFC-writing app such as NFC Tools or an equivalent.
-4. Choose to write a URL/URI record.
-5. Paste the HydroPOP URL and write it to the tag.
-6. Scan and test the complete authenticated confirmation flow.
-7. Do not lock the physical tag during early validation.
-
-Local URLs use `NEXT_PUBLIC_SITE_URL=http://localhost:3000`, producing
-`http://localhost:3000/t/{identifier}`. Production must set
-`NEXT_PUBLIC_SITE_URL=https://hydropop-lake.vercel.app`, producing
-`https://hydropop-lake.vercel.app/t/{identifier}`. URL construction uses one
-validated origin utility, removes a trailing slash, has no fallback Vercel
-domain, and fails during Next startup/build if the value is missing or invalid.
-
-Verify the same canonical origin manually in both places before provisioning
-physical tags:
-
-- Vercel Production environment:
-  `NEXT_PUBLIC_SITE_URL=https://hydropop-lake.vercel.app`
-- Supabase Authentication URL configuration: site URL and permitted redirect
-  URLs for `https://hydropop-lake.vercel.app`
-
-The transport mapping is intentionally simple:
-
-- NFC confirmation → `bottle_completed`
-- NFC half confirmation → `manual_intake` with a server-calculated volume
-- physical-button intentional completion request → `bottle_completed`
-- physical-button short status request → read-only status, zero hydration
-
-The hydration engine and immutable event remain identical; only the client
-transport changes. Browser-based NFC writing, Bluetooth, native mobile code,
-and a simulated electronic charm are not part of this phase.
-
-## Physical button backend contract
-
-The Phase 3A backend reuses `devices` for `physical_button` records. Each button
-belongs to the authenticated creator, is assigned to one owned non-archived
-bottle, and has one 256-bit random base64url credential. Creation returns the
-raw credential once; only its lowercase SHA-256 digest is persisted. The
-credential cannot be read, rotated, or reactivated. Revocation preserves device
-and hydration history while immediately rejecting future device requests.
-
-Private management is available at `/device/button`. Browser requests may
-submit only the label and bottle ID; the server derives the owner from the
-verified Supabase session. The credential digest is excluded from direct table
-grants and from every management response.
-
-The physical button talks only to these Next.js HTTPS endpoints:
-
-- `POST /api/v1/device/hydration`
-- `GET /api/v1/device/status`
-
-Both require `Authorization: Bearer <DEVICE_TOKEN>`. The POST body is strictly:
-
-```json
-{
-  "action": "bottle_completed",
-  "idempotencyKey": "device-generated-event-key",
-  "occurredAt": "2026-09-04T16:00:00.000Z"
-}
+```sh
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
 ```
 
-`occurredAt` is optional. When omitted, Next.js supplies its actual server
-receipt time. A supplied time must be UTC, no more than five minutes ahead, and
-no more than seven days old. The button never submits an owner, bottle, volume,
-goal, source, or arbitrary event type.
+Run these after every task. Formatting, browser tests and database checks are
+covered in [Testing](docs/testing.md). Production changes follow the
+[operations runbook](docs/operations.md); a documentation edit does not deploy the app.
 
-Firmware resolves press duration and cancellation before making a request. The
-backend never receives or interprets hold duration: a short status gesture uses
-GET and cannot write hydration, while only an already-resolved intentional
-completion sends the POST above.
+## Production and historical evidence
 
-The database scopes each request key to the authenticated physical-device ID
-before calling the existing atomic `process_hydration_event` function. A lost
-response can therefore be retried safely: the first response says `created`, a
-replay says `existing`, and both refer to the same immutable event semantics.
-The authoritative processor resolves `typical_fill_ml ?? capacity_ml`, records
-source `device`, and keeps existing reversal and completed-bottle behavior.
-Next.js also authenticates to these two public-key database RPCs with the
-independent `PHYSICAL_DEVICE_RPC_SECRET` stored in Supabase Vault. This prevents
-a stored device digest from becoming a reusable direct-Supabase credential.
-Use `supabase/templates/physical-device-rpc-secret.sql.example` as the safe
-pre-deployment template; never place the real value in the repository.
+Canonical production origin: [hydropop-lake.vercel.app](https://hydropop-lake.vercel.app).
+The repository is integrated with Vercel through its GitHub main branch.
 
-Success responses are unwrapped, compact version-1 JSON for firmware. They
-contain milliliter totals, the user's display unit, goal progress, pace status,
-pace delta, a `none`/`half`/`full` recommendation, server time, and the assigned
-bottle's normal completion amount. POST additionally returns `recordedMl` and
-`result`. No response includes account identifiers, bottle identifiers, NFC or
-Community data, history, or credentials. Status GET is read-only; successful
-POST is the only device operation that updates last-seen/sync metadata.
-
-Pace output is calculated in TypeScript by the same deterministic coaching
-functions used by Today and the Web Push reminder policy. Device hydration does
-not enqueue a push notification; later reminder evaluation naturally reads the
-new immutable event. A newly created event calls the same centralized hydration
-view revalidation as manual and NFC recording.
-
-## PWA Web Push reminders
-
-HydroPOP registers one service worker at `/sw.js`. It provides an offline
-fallback and handles both pace and current-device test notifications. Permission
-is never requested during page load, login, NFC, or hydration recording; the
-user must opt in from `/settings/notifications`. iPhone and iPad users must open
-the installed Home Screen web app. Supported Android browsers may enable Push
-directly and can optionally install HydroPOP for the standalone experience.
-
-Generate one VAPID pair deliberately outside build/runtime:
-
-```bash
-pnpm exec web-push generate-vapid-keys --json
-```
-
-Generate the independent 256-bit worker secret with:
-
-```bash
-openssl rand -hex 32
-```
-
-Never commit either private value. Pace evaluation uses the member's IANA local
-date, persisted wake/target schedule, date-effective goal, active primary
-bottle, immutable snapshot event volumes, future-event exclusion, and the same
-on-track tolerance as Today. The pilot reminder window is 09:00–20:00 local;
-recent hydration suppresses reminders for 20 minutes, continued behind episodes
-repeat no sooner than 90 minutes, a new episode has a 45-minute global cooldown,
-and accepted pace deliveries are capped at four per local day.
-
-The Supabase Cron/pg_net setup is intentionally post-deployment. The placeholder
-template at `supabase/templates/push-reminders-cron.sql.example` stores the
-worker secret in Vault, invokes the Vercel POST worker every 15 minutes, verifies
-the job, and includes the explicit unschedule command. Do not run it until the
-migration, generated types, server environment, and production deployment are
-ready.
-
-## Deployment
-
-The app is compatible with Vercel's Next.js runtime. Configure the Supabase,
-site, allowlist, and Web Push environment variables for Preview and Production,
-using the appropriate site URL for each environment. No service-role key is
-used; the internal worker uses the public Supabase client plus a narrow
-Vault-authenticated database interface.
-
-## Linked database development
-
-The migrations create `profiles`, `bottles`, `hydration_goals`, `nfc_tags`,
-`devices`, immutable `hydration_events`, transactional onboarding, and atomic
-hydration-event processing. Every user-owned table has RLS enabled. Related
-bottle and device ownership is enforced by composite foreign keys, policies,
-and the security-invoker RPC. This repository uses the linked project for
-database linting, migration review, and generated types; Docker is not required.
-
-`supabase/seed.sql` is never included in an ordinary linked database push. Do
-not add `--include-seed` to a remote deployment.
-
-Regenerate TypeScript database types from the linked project after its
-migrations are applied:
-
-```bash
-pnpm db:types
-```
-
-To review a remote deployment without applying it:
-
-```bash
-pnpm supabase login
-pnpm supabase link --project-ref "$SUPABASE_PROJECT_REF"
-pnpm supabase migration list --linked
-pnpm supabase db push --linked --dry-run
-```
-
-After reviewing the output and obtaining explicit approval for the schema change:
-
-```bash
-pnpm supabase db push --linked
-pnpm supabase db lint --linked --schema public --fail-on warning
-pnpm db:types
-```
-
-Generated types must be refreshed only after the linked migration is applied.
-Never pass database passwords, access tokens, or connection strings on a shared
-command line or commit them to the repository.
+The September 5 notification audit and restoration reports are dated evidence,
+not live health dashboards. Use [current operational checks](docs/operations.md)
+to establish present health. Begin with the [documentation hub](docs/README.md)
+for the complete reading map and historical reports.

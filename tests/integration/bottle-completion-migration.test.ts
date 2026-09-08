@@ -32,7 +32,7 @@ const todayPage = readFileSync(
   resolve(process.cwd(), "app", "(private)", "today", "page.tsx"),
   "utf8",
 );
-const readme = readFileSync(resolve(process.cwd(), "README.md"), "utf8");
+const nfcGuide = readFileSync(resolve(process.cwd(), "docs", "nfc.md"), "utf8");
 
 describe("normal bottle completion database and product contract", () => {
   it("adds an optional typical fill constrained by physical capacity", () => {
@@ -146,7 +146,8 @@ describe("normal bottle completion database and product contract", () => {
     expect(todayPage).not.toContain("bottle-cycle");
   });
 
-  it("documents that NFC confirmation creates only bottle_completed", () => {
-    expect(readme).toContain("NFC confirmation → `bottle_completed`");
+  it("documents distinct NFC full and half recording semantics", () => {
+    expect(nfcGuide).toContain("NFC full confirmation → `bottle_completed`");
+    expect(nfcGuide).toContain("NFC half confirmation → `manual_intake`");
   });
 });
